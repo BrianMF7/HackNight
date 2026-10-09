@@ -1,236 +1,159 @@
-# Implementation Plan: Clinical intake platform (web + Zoom MVP)
+# Implementation Plan: Backend for the clinical intake workspace
 
 ## Overview
 
-An intake clinician runs an adult mental-health appointment that must last at least 45:00. A Next.js workspace shows a labeled synthetic patient beside the fixed 8-page Adult Intake Questionnaire. Synthetic transcript events become evidence-grounded drafts. She confirms every required field, including safety. **Confirm and send** then stamps one PDF from that master template, downloads it, and emails the same bytes. Disconnecting can keep or discard the draft. Neither choice sends.
+The Vite app in this repo is the UI. Live mode already refuses to guess routes: [`src/api/endpoints.js`](../src/api/endpoints.js) and [`src/api/liveWorkspace.js`](../src/api/liveWorkspace.js) leave every path `null`, and [`src/api/config.js`](../src/api/config.js) stores a backend base URL plus a bearer token. This plan adds that Node server and the clinical rules behind the workspace calls the screens already make.
 
-This revision follows `Updated_Clinical_Intake_Implementation_Plan.pdf` (10/9/2026) and keeps the decisions already inspected in this repo. There is no `SPEC.md`. The repo still has no application code. This is a synthetic-data hackathon demo, not a HIPAA deployment.
+Send is allowed only when **both** of these are true, plus the field checks the review screen already assumes:
 
-## Source forms
+- Server-computed elapsed time is at least 45:00. Earlier than that, send is refused. There is no expiration that blocks send after 45:00.
+- The clinician has chosen what happens to the form. **Send** is `POST .../handoff`. **Keep** and **Discard** never email, at any clock time.
 
-| File | Role |
-|---|---|
-| `1_intake_questionnaire_adult.pdf` (PSY Family Services, 8 pages) | **The handoff PDF.** Flat pages (`Form: none`). Stamp this file. Do not redraw it |
-| `patient-health-questionnaire.pdf` / `depression_patient_health_questionnaire.pdf` (PHQ-9) | Screening instrument. Flags on the review screen only. Not a second emailed PDF |
-| `APA_DSM-5-Contents.pdf` | Disorder **names** for draft labels only. No criterion text in git |
-| `DSM-5.pdf` / `DSM 5 TR-APA (2022).pdf` | Local reference. **Do not copy into git** |
-| `briefintake_assessment.pdf` | HIV case-management intake. **Wrong domain — out of scope** |
-| Updated plan PDF, HackKnight slides | Planning inputs, not product forms |
-
-The PSY template is used under the team’s right to that file. Do not republish it outside the hack if rights are unclear.
-
-## What changed from the previous plan
-
-- **Frontend:** Base44 is not the app. Next.js in this repo is. See the comparison below.
-- **One emailed PDF:** the adult intake. PHQ-9 is no longer a second attachment.
-- **Transcript:** synthetic event playback during the session, plus an optional Zoom JSON file. ElevenLabs is not the live speech-to-text path.
-- **ElevenLabs:** speaks the next unanswered question. Prompt text only. No transcript is sent.
-- **Disconnect:** Keep draft or Discard draft. Discard asks for confirmation. Neither emails.
-- **Presage:** a simulated focus-drop highlights that same next question. No camera frames are stored. No Presage SDK.
-- **Still true:** quotes must be real transcript lines, safety cannot be waived, send is one action, Tiger stores the sent packet not the raw transcript, no DSM criteria, no diagnosis code on the PDF.
-
-## 45:00 gate
-
-The updated PDF says it retains the existing 45:00 send gate, and it also says an **expired** clock blocks send. Those are opposite rules. This plan keeps the rule already written here:
-
-- `elapsed < 45:00` is `under`. Send is blocked.
-- `elapsed >= 45:00` is `met`. Send is allowed only after she has confirmed every required field and the therapist address.
-- The clock takes timestamps as arguments and does not call `Date.now()`.
-
-The expiration reading (send banned after 45:00) is open question 2. Tasks do not implement it.
-
-## Base44 vs Next.js
-
-Base44’s site hosting serves a static single-page app (their generated apps are Vite + React). Their backend is a separate Mongo-compatible database, auth, and file store. Server-side rendering is not supported on that hosting.
-
-| | Base44 | Next.js in this repo |
-|---|---|---|
-| Where the UI lives | Base44 project / sandbox, plus this git repo for the clinical core | This repo, on the same branches as the backend |
-| Clinical rules | Easy to duplicate in the hosted app and bypass the Node gate | Pages call `src/` modules. One implementation |
-| Database | Their store is the default. The PDF forbids a second clinical database next to Tiger | Tiger stays the only store, and only after send |
-| Tests | UI path is not `node --test` | Clinical modules stay `node --test`. Pages render those modules |
-| Four people | Two sources of truth. Merge conflicts move outside git | One branch per task, rebase on `main` |
-| Demo | Depends on Base44 being up and on an API contract that is still an open question in the PDF | `next dev` and the clinical tests on one machine |
-
-**Decision:** Next.js is the better option. Use it for the public page, the launch into a labeled demo session, the split workspace, and the review screen. Do not add the Base44 SDK, CLI, database, or auth. Sign-in is a **Launch platform** button into a synthetic clinician session, not a real account system.
-
-Clinical code stays plain Node ESM under `src/` so `node --test` does not need Next. Next route handlers and pages import those modules. Do not reimplement grounding, the clock, or send inside React components.
-
-## Send decision
-
-1. During the appointment, map supported statements to stable field ids. Show the draft, the quote, and what is still open. Silence is not a denial.
-2. If she ends early or the patient disconnects: **Keep draft** (incomplete, unsent) or **Discard draft** (confirmation required, draft cleared, unsent).
-3. At or after 45:00 she reviews the full form, confirms each required field, and checks the therapist address.
-4. **Confirm and send** renders the final PDF from the master template, downloads those bytes, and emails the same bytes once. A second send of the same packet does not send a second email.
-
-Send does nothing when a required field is open, safety was waived, the therapist address is missing, she has not confirmed the form, or the session is under 45:00.
-
-A draft edit after confirm clears confirmation, so she reviews the new values before send.
+This revision replaces the unfinished Next.js plan. Product code starts with `/build`, not here.
 
 ## Architecture decisions
 
-- **Next.js for screens. Node modules for rules.** `src/intake`, `src/session`, `src/handoff`, `src/draft`, `src/zoom`, `src/speech`, `src/store`.
-- **Stamp the master PDF.** `pdf-lib` draws confirmed values onto a copy of `templates/adult-intake.pdf`. Do not redraw the form with `pdfkit`. The PDF’s “PDFKit” line loses to the inspected fact that these files are flat scans/pages, and to the risk that a redraw changes the form between clients.
-- **Mock playback is the demo transcript.** A typed event list in `fixtures/synthetic/` drives the workspace. No live microphone on the critical path.
-- **Zoom is a file import.** Same `{ speaker, text, startMs }` lines. No Zoom app package. The download control says the companion is not available.
-- **Gemini** receives transcript lines and the question list. Invented quotes fail `ground` and fill nothing.
-- **ElevenLabs** receives the next question’s prompt text only.
-- **Tiger** stores case id, therapist, PDF bytes, `sent_at`, and nudge times. No raw audio and no full transcript. Missing `DATABASE_URL` skips the insert; download and email already succeeded.
-- **Synthetic data only in git.** `sessions/`, `imports/`, `outbox/`, `.env`, and local DSM paths are gitignored.
+- **UI stays Vite.** Base44 login, register, and the marketing pages stay as they are. The clinical server does not reimplement accounts.
+- **Rules stay out of React.** Pages already display answers and refusal reasons. They do not decide the gate. New logic lives in plain Node ESM under `server/`, tested with `node --test`.
+- **One process, no new framework.** `node:http` plus a route table. CORS for the Vite origin. `Authorization: Bearer` must match `BACKEND_TOKEN`.
+- **Session memory, then Tiger.** Unsent drafts live in process memory. A successful send inserts one Tiger row: case id, therapist email, PDF bytes, `sent_at`, nudge ids. No raw audio and no full transcript. Missing `DATABASE_URL` skips the insert; download bytes and the email already succeeded.
+- **The server does not trust the client clock or the client’s confirmed-id list.** `createSession` stores `startedAt`. The handoff route reads `Date.now()` once at the boundary and passes both numbers into `clockStatus(startedAt, now)`. The clock module itself never calls `Date.now()`. Handoff uses answers stored by `recordClinicianAction`. A client that posts every field id still fails if the server never recorded those confirms.
+- **Canonical questions match the UI copy** in [`src/api/templates/adultIntake.js`](../src/api/templates/adultIntake.js): `adult-intake-v1`, required ids, and safety on `PHQ-009`, `SAF-001`, `SAF-002`. One emailed PDF contains those confirmed fields. PHQ-9 is not a second attachment. The code template is 4 pages; do not invent the other pages.
+- **Demo clock shortcut:** with `ALLOW_DEMO_OFFSET=1`, creating the synthetic session may set `startedAt` 45 minutes in the past so a judge can see an allowed send. Unset, the gate uses real elapsed time. `shortcut: demo offset is env-gated and off by default.`
 
-## Sponsors
+```mermaid
+flowchart TD
+  vite[Vite UI Base44 login]
+  mock[Mock adapter in the browser]
+  live[Live adapter bearer fetch]
+  http[Node server server/index.js]
+  rules[Pure modules clock ground packet pdf]
+  memory[In-memory session until send]
+  tiger[Tiger row after a successful send]
+  vite --> mock
+  vite --> live
+  live --> http
+  http --> rules
+  rules --> memory
+  rules --> tiger
+```
 
-| Sponsor | Role |
-|---|---|
-| Gemini | Draft field values from transcript lines. Every quote must appear in the transcript |
-| Tiger Data | Session row, final PDF bytes, `sent_at`, nudge times |
-| ElevenLabs | Speak the next unanswered question. Prompt text only |
-| Presage | Not integrated. A simulated focus-drop highlights that same question |
-| Zoom | Optional JSON import of a cloud-recording transcript. Not live audio |
-| GoDaddy Registry | Register the demo domain by hand when a public URL exists. No registry code |
-| Next.js | Site and workspace. Not a second clinical backend |
+## Route contract
 
-Left out on purpose: Base44, live ElevenLabs speech-to-text, Presage SDK and camera capture, the HIV brief intake, a second emailed PHQ-9, `pdfkit` redraws, Solana, Snowflake, production HIPAA, real WebRTC, a published Zoom app.
+Fill these in the live adapter only in the task that implements the handler.
+
+- `GET /api/ping` → `{ ok: true }`
+- `GET /api/templates` and `GET /api/templates/:templateId`
+- `POST /api/sessions` → the shape `Workspace.jsx` already stores (`id`, `patientLabel`, `therapist`, `plannedMinutes: 45`, `templateId`, `startedAt`)
+- `GET /api/sessions/:sessionId/transcript` → `{ t, speaker, text }[]`
+- `GET /api/sessions/:sessionId/events` → `{ at, fieldId, status, answer, evidence, t }[]`
+- `POST /api/sessions/:sessionId/actions` → `{ ok: true }`
+- `POST /api/sessions/:sessionId/retain` → `{ ok: true, status: "draft_retained", sent: false }`
+- `POST /api/sessions/:sessionId/discard` → `{ ok: true }`
+- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, to }` or `{ allowed: false, reasons: [{ code, message }] }` with HTTP 200
+- `POST /api/sessions/:sessionId/play` → `{ audioUrl }` from prompt text only
+
+Refusal reasons the review alert already prints verbatim: `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`, `SEND_GATE_NOT_MET`. Auth and missing session stay 401 and 404 with `{ message, code }`.
 
 ## Dependency graph
 
-```
-Adult intake template + field ids + synthetic transcript
-        │
-        ├── Ground drafts
-        │       ├── Safety-first nudge queue
-        │       │       ├── ElevenLabs prompt (text only)
-        │       │       └── Simulated focus-drop (same question)
-        │       ├── Gemini drafts
-        │       └── Zoom JSON → same lines
-        ├── 45:00 minimum clock
-        ├── Confirm each required field
-        │       ├── Disconnect keep / discard (never email)
-        │       └── Stamp the master PDF
-        │               └── Confirm and send (download + one email)
-        │                       └── Tiger row
-        └── Next.js shell (launch demo)
-                └── Split workspace playback
-                        └── Review screen wired to send
-```
+Ping and the template ids come first. After that, the clock, grounding, and the Zoom normalizer can proceed on separate branches. Do not share `package.json` edits across open branches.
 
-After Task 1 is on `main`, these can proceed on separate branches: grounding (Tasks 2–3), the clock (Task 4), the Zoom normalizer (Task 13, after Task 2), and the Next.js shell (Task 9). Do not share `package.json` edits across open branches. Rebase after each merge.
+```mermaid
+flowchart TD
+  ping[Task1 Ping and bearer]
+  template[Task2 Template ids]
+  session[Task3 Synthetic session and ground]
+  clock[Task4 45 minute clock]
+  confirm[Task5 Confirm and edit]
+  choice[Task6 Keep or discard]
+  gate[Task7 Handoff refusal]
+  send[Task8 One PDF email]
+  gemini[Task9 Gemini drafts]
+  zoom[Task10 Zoom file]
+  speech[Task11 ElevenLabs prompt]
+  tiger[Task12 Tiger row]
+  ping --> template --> session
+  session --> confirm --> choice --> gate
+  clock --> gate
+  gate --> send
+  session --> gemini
+  session --> zoom
+  template --> speech
+  send --> tiger
+```
 
 ## Task list
 
-### Phase 1: Form and drafts
+### Phase 1: Server the UI can reach
 
-- [ ] Task 1: Master template, field ids, synthetic session
-- [ ] Task 2: Ground draft answers
-- [ ] Task 3: Safety-first nudge queue
+- [ ] Task 1: Ping, CORS, bearer
+- [ ] Task 2: Canonical adult-intake template
+- [ ] Task 3: Synthetic session, transcript, grounded events
 
 ### Checkpoint: After Tasks 1–3
 
 - [ ] `node --test` passes
-- [ ] Synthetic ramble fills only ids that exist on the adult intake; unknown quotes throw; safety gaps sort first
+- [ ] Live mode can ping, load the template, and create a session whose events match the fixture
 - [ ] Human review before the next phase
 
-### Phase 2: Clock, confirm, disconnect
+### Phase 2: Clock and the clinician’s choice
 
 - [ ] Task 4: 45:00 minimum clock
-- [ ] Task 5: Confirm required fields
-- [ ] Task 6: Disconnect keep or discard
+- [ ] Task 5: Confirm and edit
+- [ ] Task 6: Keep or discard
 
 ### Checkpoint: After Tasks 4–6
 
 - [ ] `node --test` passes
-- [ ] Under 45:00, keep and discard both email nothing
-- [ ] Waived safety or an open required field produces no packet
+- [ ] Under 45:00, keep and discard email nothing
+- [ ] A waived safety item is not confirmed
 - [ ] Human review before the next phase
 
-### Phase 3: One PDF and send
+### Phase 3: Send
 
-- [ ] Task 7: Stamp the master PDF
-- [ ] Task 8: Confirm and send
+- [ ] Task 7: Handoff refusal
+- [ ] Task 8: One PDF, one email, and the mock gate
 
 ### Checkpoint: After Tasks 7–8
 
-- [ ] `node --test` passes
-- [ ] Send emails one PDF only at or after 45:00, and a repeat send does not email twice
-- [ ] Under 45:00, open safety, or a missing address produces no PDF email
-- [ ] Human review before the next phase
+- [ ] `node --test` passes and `npm run build` succeeds
+- [ ] Live handoff shows refusal reasons in the review dialog, then one send at or after 45:00
+- [ ] Human review before sponsor integrations
 
-### Phase 4: Next.js workspace
+### Phase 4: Sponsors
 
-- [ ] Task 9: Public page and demo launch
-- [ ] Task 10: Split workspace playback
-- [ ] Task 11: Review, confirm, disconnect, send
-
-### Checkpoint: After Tasks 9–11
-
-- [ ] `node --test` passes and `npx next build` succeeds
-- [ ] Synthetic playback updates fields and does not change the template
-- [ ] Disconnect never sends; Confirm and send follows the Task 8 gate
-- [ ] Human review before the next phase
-
-### Phase 5: Speech, Zoom, Tiger
-
-- [ ] Task 12: Gemini drafts
-- [ ] Task 13: Zoom transcript file
-- [ ] Task 14: ElevenLabs next-question audio
-- [ ] Task 15: Simulated focus-drop
-- [ ] Task 16: Tiger stores the sent packet
+- [ ] Task 9: Gemini drafts
+- [ ] Task 10: Zoom transcript file
+- [ ] Task 11: ElevenLabs prompt audio
+- [ ] Task 12: Tiger stores the sent packet
 
 ### Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic demo: playback, safety nudge, keep/discard, send one PDF at or after 45:00, no second email
+- [ ] Synthetic path: playback events, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Tiger row only when `DATABASE_URL` is set
-- [ ] Zoom companion control says it is not available
-- [ ] GoDaddy domain only after a public URL exists
-- [ ] Human approval before any live microphone, camera, or real inbox
-
-## Demo script (synthetic only)
-
-1. Open the public page. **Launch platform** enters a labeled demo clinician session. Therapist is `therapist@example.com`.
-2. Split screen: synthetic patient video/chat on the left, the adult intake fields on the right, timer running toward 45:00.
-3. Play the synthetic transcript. A matched line becomes a draft with its quote. The template layout does not change.
-4. Leave a safety item unanswered. It leads the nudge list.
-5. Disconnect. **Keep** leaves an incomplete unsent draft. **Discard** asks, then clears it. No email either way.
-6. Confirm and send while safety is open, or while the clock is under 45:00. No PDF email.
-7. At or after 45:00, confirm every required field and the recipient.
-8. Confirm and send once. The same PDF downloads and the fake mailer records one message. Tiger writes a row if configured.
-9. Send again. No second email.
-10. Zoom companion and real calling stay labeled unavailable.
+- [ ] Human approval before a live microphone, camera, or real inbox
 
 ## Risks and mitigations
 
 | Risk | Impact | Mitigation |
 |---|---|---|
-| Stamps miss the blanks on the flat PDF | High | Field map plus one manual open of the stamped file in Task 7 |
-| Team implements “expired clock blocks send” | High | Task 4 tests `44:59` as `under` and `45:00` as `met` |
-| Base44 or a second database stores drafts | High | Next.js calls `src/`. Tiger runs only after a successful send |
-| Draft mistaken for a confirmed fact | High | Quote on screen, per-field confirm, no diagnosis code |
-| PHQ-9 or DSM text committed or emailed | High | PHQ-9 is flags only. DSM files stay outside git |
-| Disconnect sends a packet | High | Task 6 tests both choices with zero mailer calls |
-| ElevenLabs receives the transcript | Med | Request body is the prompt string only |
-| SMTP or Tiger unset at the demo | Med | Fake mailer and download still prove send |
-
-## Open questions
-
-1. Adult intake is the only emailed form. PHQ-9 stays on-screen screening. Confirm.
-2. Should send instead be banned **after** 45:00? This plan does not do that. Say so if the expiration reading is the one you want.
-3. How long may a kept incomplete draft live, and who may discard it later? MVP: it lives in the session until she discards it or the process restarts.
-4. Is `therapist@example.com` typed each session or fixed for the demo? Tasks use the fixture address.
-5. Is a Zoom JSON import enough for judging, or is an installable Zoom app required? Tasks implement the import only.
-6. Is a labeled synthetic video enough? Tasks do not add WebRTC.
-7. Are redistribution rights confirmed for the PSY adult intake and any PHQ-9 text shown on screen?
-8. If a sponsor booth requires Base44 on screen, use it as a marketing shell only. Do not point it at a Base44 database.
+| Mock blocks send after 45:00 | High | Task 8 flips that check to `SEND_GATE_NOT_MET` when under 45:00 |
+| Client lies about elapsed or confirmed ids | High | Server ignores both; uses `startedAt` and stored actions |
+| No PSY scan in the repo | Med | pdf-lib document of the confirmed packet; UI template is 4 pages |
+| Dashboard says PDFKit | Low | Server uses `pdf-lib`; label can stay |
+| Demo needs a send without waiting | Med | `ALLOW_DEMO_OFFSET=1` only; off by default |
+| SMTP or Tiger unset at the demo | Med | Fake mailer and PDF buffer still prove send |
+| Base44 auth ≠ bearer token | Med | Connection settings still require the token |
 
 ## Out of scope
 
-- Base44 SDK, database, auth, and hosting
-- Production HIPAA, BAAs, real PHI, live clinical use
-- Diagnosis codes, DSM-5 / DSM-5-TR criterion text, emergency calls
-- HIV brief intake, second emailed PHQ-9, `pdfkit` form redraw
-- Live microphone speech-to-text, Presage camera capture, ElevenLabs reading the transcript
-- Real two-party video, a published Zoom app, GoDaddy API
-- Solana, Snowflake, sending before 45:00, a second email for the same packet
+- Next.js, a Base44 clinical database, Convex, and the unwired clinic CRUD (`listPatients`, `generateReport`, dashboard stats)
+- Presage SDK and camera frames
+- A packaged Zoom app, live WebRTC, GoDaddy API, Solana, Snowflake
+- Production HIPAA, real PHI, diagnosis codes, DSM criterion text
+- A second emailed PHQ-9, send before 45:00, and a second email for the same session
 
 ## Definition of done
 

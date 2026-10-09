@@ -1,101 +1,100 @@
-# Tasks: Clinical intake platform (web + Zoom MVP)
+# Tasks: Backend for the clinical intake workspace
 
-Requirements: `tasks/plan.md` and the 10/9/2026 updated plan PDF. Adult intake is the only emailed PDF. Next.js is the UI. Base44 is not used. 45:00 is a minimum, not an expiration.
+Requirements: `tasks/plan.md`. Vite UI stays. Node server under `server/` owns clinical rules. Send only after 45:00 **and** an explicit clinician choice (handoff / keep / discard). Base44 is auth/marketing only.
 
-Test: `node --test` · Focused: `node --test test/<file>.test.js` · Clinical build: `node --check` on touched `.js` files · UI build: `npx next build`
+Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Check: `node --check` on touched `.js` files · UI build: `npm run build`
 
-Stack: Node ESM, `node:test`, Next.js for pages. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`, `next`, `react`, `react-dom`. Gemini and ElevenLabs via `fetch`. Synthetic fixtures only.
+Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs via `fetch`. Synthetic fixtures only.
 
 ---
 
-## Task 1: Master template, field ids, synthetic session
+## Task 1: Ping, CORS, bearer
 
-**Description:** Copy the blank 8-page adult intake into `templates/adult-intake.pdf`. Define question ids for presenting problem, duration, why now, the symptom and safety items that exist on that form, food/basics, and social stressors. Map each required id to a page and stamp region. Loader reads only `fixtures/synthetic/`.
+**Description:** `server/index.js` answers `GET /api/ping`. Missing or wrong bearer is 401. CORS allows the Vite origin. Set `endpoints.ping` in `src/api/endpoints.js`.
 
 **Acceptance criteria:**
-- [ ] Required ids include presenting problem, duration, why now, and safety (ideation, attempt, die-vs-sleep intent, stated means, outcome)
-- [ ] Every required id has a stamp target on `templates/adult-intake.pdf`
-- [ ] Synthetic fixture includes `therapist@example.com`, a case id, and no real names or contacts
-- [ ] `loadSynthetic` rejects paths outside `fixtures/synthetic/`
+- [ ] Connection settings “Save and test” can succeed against the local server
+- [ ] A bad token returns 401 and the UI shows that error
+- [ ] `endpoints.ping` is `{ method: "GET", path: "/api/ping" }`
 
 **Verification:**
-- [ ] Tests pass: `node --test test/load.test.js`
-- [ ] Build succeeds: `node --check src/intake/questions.js && node --check src/intake/load.js`
-- [ ] Manual check: the template opens as the blank PSY adult intake
+- [ ] Tests pass: `node --test server/test/ping.test.js`
+- [ ] Build succeeds: `node --check server/index.js`
+- [ ] Manual check: connection dialog against `http://localhost:8787`
 
 **Dependencies:** None
 
 **Files likely touched:**
-- `package.json`, `.gitignore`
-- `templates/adult-intake.pdf`
-- `src/intake/questions.js`, `src/intake/fields.js`, `src/intake/load.js`
-- `fixtures/synthetic/intake-ramble.json`
-- `test/load.test.js`
-
-**Estimated scope:** Medium: 3–5 files plus the template PDF
-
----
-
-## Task 2: Ground draft answers
-
-**Description:** Accept a draft only when every filled answer quotes a span that exists in the transcript. Unknown field ids and invented quotes are rejected. Silence does not become a “no”.
-
-**Acceptance criteria:**
-- [ ] A draft whose quotes are substrings of the ramble fixture is accepted
-- [ ] A quote that is not in the transcript throws
-- [ ] No safety language in the transcript means no filled safety id
-
-**Verification:**
-- [ ] Tests pass: `node --test test/ground.test.js`
-- [ ] Build succeeds: `node --check src/intake/ground.js`
-- [ ] Manual check: accepted quotes are substrings of the fixture
-
-**Dependencies:** Task 1
-
-**Files likely touched:**
-- `src/intake/ground.js`
-- `fixtures/synthetic/ramble-draft.json`
-- `test/ground.test.js`
+- `package.json`
+- `server/index.js`
+- `src/api/endpoints.js`
+- `.env.example`
+- `server/test/ping.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 3: Safety-first nudge queue
+## Task 2: Canonical adult-intake template
 
-**Description:** Required ids with no draft become nudges. Safety ids sort first. A complete required set returns an empty list.
+**Description:** `GET /api/templates` and `GET /api/templates/:templateId` return `adult-intake-v1` with the same question ids, `required`, and `safety` flags as `src/api/templates/adultIntake.js`. Brief intake and PHQ-9 stay `available: false`.
 
 **Acceptance criteria:**
-- [ ] Every required id without a draft appears once
-- [ ] Safety ids order before other domains
-- [ ] A fully drafted required set returns an empty list
+- [ ] A contract test fails if a required or safety id drifts from the frontend file
+- [ ] Unknown template id is 404
+- [ ] Brief intake and PHQ-9 list as unavailable
 
 **Verification:**
-- [ ] Tests pass: `node --test test/nudges.test.js`
-- [ ] Build succeeds: `node --check src/intake/nudges.js`
-- [ ] Manual check: the ramble nudge list leads with open safety ids
+- [ ] Tests pass: `node --test server/test/template.test.js`
+- [ ] Build succeeds: `node --check server/template.js`
+
+**Dependencies:** Task 1
+
+**Files likely touched:**
+- `server/template.js`
+- `src/api/liveWorkspace.js`
+- `server/test/template.test.js`
+
+**Estimated scope:** Medium: 3–5 files
+
+---
+
+## Task 3: Synthetic session, transcript, grounded events
+
+**Description:** `POST /api/sessions` plus transcript and events from `src/api/fixtures/syntheticSession.js`. `ground` accepts a draft only when every quote is a substring of the transcript. Unknown field ids and invented quotes throw. Silence does not become “no”. Wire createSession, getTranscript, and getEvents in the live adapter.
+
+**Acceptance criteria:**
+- [ ] The fixture events pass `ground`
+- [ ] An invented quote fills nothing
+- [ ] `load` rejects paths outside the synthetic fixture dir
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/session.test.js server/test/ground.test.js`
+- [ ] Build succeeds: `node --check server/session.js && node --check server/ground.js`
+- [ ] Manual check: live mode creates a session and events match the fixture
 
 **Dependencies:** Task 2
 
 **Files likely touched:**
-- `src/intake/nudges.js`
-- `test/nudges.test.js`
+- `server/session.js`, `server/ground.js`, `server/fixtures/`
+- `src/api/liveWorkspace.js`
+- `server/test/session.test.js`, `server/test/ground.test.js`
 
-**Estimated scope:** Small: 1–2 files
+**Estimated scope:** Medium: 3–5 files
 
 ---
 
 ## Checkpoint: After Tasks 1–3
 
 - [ ] `node --test` passes
-- [ ] Synthetic ramble yields grounded drafts and safety-first gaps
+- [ ] Live mode can ping, load the template, and create a session whose events match the fixture
 - [ ] Review with human before proceeding
 
 ---
 
 ## Task 4: 45:00 minimum clock
 
-**Description:** Email is allowed only once the session has lasted 45:00. Times are arguments. `elapsed < 45:00` is `under`. `elapsed >= 45:00` is `met`. Do not treat 45:00 as an expiration that blocks send.
+**Description:** Email is allowed only once the session has lasted 45:00. Times are arguments. `elapsed < 45:00` is `under`. `elapsed >= 45:00` is `met`. Do not treat 45:00 as an expiration. No `SEND_GATE_EXPIRED`.
 
 **Acceptance criteria:**
 - [ ] 44:59 is `under` and 45:00 is `met`
@@ -103,62 +102,64 @@ Stack: Node ESM, `node:test`, Next.js for pages. Add when a task needs them: `pd
 - [ ] Callers can pass a fixed start and end and get the same status twice
 
 **Verification:**
-- [ ] Tests pass: `node --test test/clock.test.js`
-- [ ] Build succeeds: `node --check src/session/clock.js`
+- [ ] Tests pass: `node --test server/test/clock.test.js`
+- [ ] Build succeeds: `node --check server/clock.js`
 - [ ] Manual check: boundaries at 44:59 and 45:00
 
 **Dependencies:** Task 1
 
 **Files likely touched:**
-- `src/session/clock.js`
-- `test/clock.test.js`
+- `server/clock.js`
+- `server/test/clock.test.js`
 
 **Estimated scope:** Small: 1–2 files
 
 ---
 
-## Task 5: Confirm required fields
+## Task 5: Confirm and edit
 
-**Description:** The clinician confirms drafts one field at a time. Safety cannot be waived. A packet exists only when every required id is confirmed. The packet has answers, quotes, a confirmation line, no diagnosis code, and `confirmed: true`. A later draft edit sets `confirmed` back to false.
+**Description:** `recordClinicianAction` stores `confirm` and `edit_confirm` as confirmed, and `edit` as draft so confirmation clears. `waive` on a safety id is rejected. Server state, not the request’s id list, is what later send will read.
 
 **Acceptance criteria:**
-- [ ] An open required field or a waived safety item returns no packet
-- [ ] All required ids confirmed returns one packet and no diagnosis code
-- [ ] Editing a draft after confirm clears `confirmed`
+- [ ] An edit after confirm clears confirmed
+- [ ] A safety waive does not count as confirmed
+- [ ] Actions persist on the in-memory session
 
 **Verification:**
-- [ ] Tests pass: `node --test test/packet.test.js`
-- [ ] Build succeeds: `node --check src/handoff/packet.js`
+- [ ] Tests pass: `node --test server/test/actions.test.js`
+- [ ] Build succeeds: `node --check server/actions.js`
 
-**Dependencies:** Tasks 2, 3
+**Dependencies:** Task 3
 
 **Files likely touched:**
-- `src/handoff/packet.js`
-- `test/packet.test.js`
+- `server/actions.js`
+- `src/api/liveWorkspace.js`
+- `server/test/actions.test.js`
 
 **Estimated scope:** Small: 1–2 files
 
 ---
 
-## Task 6: Disconnect keep or discard
+## Task 6: Keep or discard
 
-**Description:** Ending early or losing the patient asks Keep draft or Discard draft. Discard requires a second confirmation. Keep marks the draft incomplete and leaves it. Discard clears it. Both return zero emails and do not render the final PDF.
+**Description:** Retain sets `draft_retained` and `sent: false`. Discard deletes the session. Neither renders a PDF or calls the mailer. Discard is the single call the UI makes after its own second confirmation.
 
 **Acceptance criteria:**
-- [ ] Keep returns the draft with `incomplete: true` and no mailer call
-- [ ] Discard without the second confirmation changes nothing
-- [ ] Confirmed discard clears the draft and still does not email
+- [ ] Keep returns `{ ok: true, status: "draft_retained", sent: false }` and no mailer call
+- [ ] Discard clears the session and still does not email
+- [ ] Both leave the mailer at zero messages when elapsed is already `met`
 
 **Verification:**
-- [ ] Tests pass: `node --test test/disconnect.test.js`
-- [ ] Build succeeds: `node --check src/session/disconnect.js`
-- [ ] Manual check: both choices leave the mailer at zero messages
+- [ ] Tests pass: `node --test server/test/disconnect.test.js`
+- [ ] Build succeeds: `node --check server/disconnect.js`
+- [ ] Manual check: keep and discard both leave sent false
 
 **Dependencies:** Task 5
 
 **Files likely touched:**
-- `src/session/disconnect.js`
-- `test/disconnect.test.js`
+- `server/disconnect.js`
+- `src/api/liveWorkspace.js`
+- `server/test/disconnect.test.js`
 
 **Estimated scope:** Small: 1–2 files
 
@@ -168,58 +169,58 @@ Stack: Node ESM, `node:test`, Next.js for pages. Add when a task needs them: `pd
 
 - [ ] `node --test` passes
 - [ ] Under 45:00, keep and discard email nothing
-- [ ] Open safety produces no packet
+- [ ] A waived safety item is not confirmed
 - [ ] Review with human before proceeding
 
 ---
 
-## Task 7: Stamp the master PDF
+## Task 7: Handoff refusal
 
-**Description:** Given a confirmed packet, draw values onto a copy of `templates/adult-intake.pdf` with `pdf-lib`. Return one buffer that starts with `%PDF`. An unconfirmed packet throws and writes nothing. Do not build a new layout.
+**Description:** `POST .../handoff` returns HTTP 200 `{ allowed: false, reasons }` when the server clock is `under`, any required id is unconfirmed, any safety id is unresolved, or the stored therapist email is missing. No PDF bytes and no mailer call. Client `elapsedSeconds` is ignored.
 
 **Acceptance criteria:**
-- [ ] Confirmed packet returns one buffer starting with `%PDF`, produced from the master template
-- [ ] Unconfirmed packet throws
-- [ ] The buffer’s extracted text includes the presenting-problem answer and the confirmation line
+- [ ] Each of the four cases produces its reason code (`SEND_GATE_NOT_MET`, `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`)
+- [ ] Refused handoff records zero emails
+- [ ] Client-supplied elapsed and confirmedIds do not bypass the gate
 
 **Verification:**
-- [ ] Tests pass: `node --test test/stamp.test.js`
-- [ ] Build succeeds: `node --check src/handoff/stamp.js`
-- [ ] Manual check: open the stamped PDF and see text on the presenting-problem blank
+- [ ] Tests pass: `node --test server/test/handoff-gate.test.js`
+- [ ] Build succeeds: `node --check server/handoff.js`
 
-**Dependencies:** Tasks 1, 5
+**Dependencies:** Tasks 4, 5, 6
 
 **Files likely touched:**
-- `package.json`
-- `src/handoff/stamp.js`
-- `test/stamp.test.js`
+- `server/handoff.js`
+- `src/api/liveWorkspace.js`
+- `server/test/handoff-gate.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 8: Confirm and send
+## Task 8: One PDF, one email, and the mock gate
 
-**Description:** Email the stamped PDF only when the clock is `met`, the packet is confirmed, and a therapist address is present. The same function returns the bytes for download. Under 45:00, an open field, or a missing address sends nothing and returns no final PDF. A second call with the same sent packet id does not email again. Tests use a fake mailer.
+**Description:** When the clock is `met`, every required id is confirmed on the server, and the therapist email is present, build one PDF with `pdf-lib` (confirmed answers, quotes, a confirmation line, no diagnosis code) and email that buffer once via a fake mailer in tests. A second handoff of the same session sends nothing new. Update the one check in `src/api/mockWorkspace.js` from `SEND_GATE_EXPIRED` to `SEND_GATE_NOT_MET` when elapsed is under 45:00. Nodemailer runs only when `SMTP_URL` is set.
 
 **Acceptance criteria:**
-- [ ] `met` + confirmed packet emails `therapist@example.com` once with the one PDF
-- [ ] `under`, unconfirmed, or missing address sends nothing and returns no PDF bytes
-- [ ] The second send of that packet id records zero new messages
-- [ ] The payload has no raw audio and no full transcript
+- [ ] One allowed send emails `therapist@example.com` once
+- [ ] A repeat adds zero messages
+- [ ] Under 45:00 still sends nothing
+- [ ] The mock returns `SEND_GATE_NOT_MET` below 45:00 and does not return `SEND_GATE_EXPIRED`
 
 **Verification:**
-- [ ] Tests pass: `node --test test/send.test.js`
-- [ ] Build succeeds: `node --check src/handoff/send.js`
-- [ ] Manual check: with `SMTP_URL`, one synthetic PDF arrives at a mailbox you control
+- [ ] Tests pass: `node --test server/test/send.test.js`
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: open the stamped PDF and see the presenting-problem answer
 
-**Dependencies:** Tasks 4, 6, 7
+**Dependencies:** Task 7
 
 **Files likely touched:**
 - `package.json`
-- `src/handoff/send.js`
+- `server/pdf.js`, `server/send.js`, `server/handoff.js`
+- `src/api/mockWorkspace.js`
 - `.env.example`
-- `test/send.test.js`
+- `server/test/send.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -227,198 +228,91 @@ Stack: Node ESM, `node:test`, Next.js for pages. Add when a task needs them: `pd
 
 ## Checkpoint: After Tasks 7–8
 
-- [ ] `node --test` passes
-- [ ] One on-time send emails one PDF; a repeat does not
-- [ ] Under 45:00 sends nothing
-- [ ] Review with human before proceeding
+- [ ] `node --test` passes and `npm run build` succeeds
+- [ ] Live handoff shows refusal reasons, then one send at or after 45:00
+- [ ] Review with human before sponsor integrations
 
 ---
 
-## Task 9: Public page and demo launch
+## Task 9: Gemini drafts
 
-**Description:** Add Next.js. The public page describes the demo and has **Launch platform**. That action opens a clinician session labeled synthetic, with the fixture therapist address. No account system and no Base44 client.
+**Description:** Ask Gemini for draft events from transcript lines and the question list, then `ground` them. Tests use a recorded response. The request must not ask for a diagnosis code. Refuse a body marked `synthetic: false` unless `ALLOW_PHI=1`.
 
 **Acceptance criteria:**
-- [ ] `/` renders the product intro and Launch platform
-- [ ] Launch opens `/session` with a visible “synthetic demo” label and `therapist@example.com`
-- [ ] No Base44 dependency is added
-
-**Verification:**
-- [ ] Tests pass: `node --test test/launch.test.js` (the launch model, not the React tree)
-- [ ] Build succeeds: `npx next build`
-- [ ] Manual check: Launch lands on the labeled session route
-
-**Dependencies:** Task 1
-
-**Files likely touched:**
-- `package.json`
-- `app/page.tsx`, `app/session/page.tsx`
-- `src/workspace/launch.js`
-- `test/launch.test.js`
-
-**Estimated scope:** Medium: 3–5 files
-
----
-
-## Task 10: Split workspace playback
-
-**Description:** The session page shows a labeled synthetic video/chat pane and the adult-intake fields. Playing the fixture appends lines and shows grounded drafts through Task 2. The page does not redraw the PDF template.
-
-**Acceptance criteria:**
-- [ ] Playback of the ramble fixture yields the same grounded drafts as Task 2
-- [ ] An invented line in the playback fixture fills nothing
-- [ ] The video pane text says the patient is synthetic
-
-**Verification:**
-- [ ] Tests pass: `node --test test/playback.test.js`
-- [ ] Build succeeds: `npx next build`
-- [ ] Manual check: play the fixture and see a quote appear next to a field
-
-**Dependencies:** Tasks 2, 9
-
-**Files likely touched:**
-- `src/workspace/playback.js`
-- `app/session/page.tsx`
-- `test/playback.test.js`
-
-**Estimated scope:** Medium: 3–5 files
-
----
-
-## Task 11: Review, confirm, disconnect, send
-
-**Description:** The session page lists nudges, confirms fields through Task 5, and offers Keep and Discard through Task 6. Confirm and send calls Task 8 and shows download plus the mailer result. The button stays disabled while the clock is `under` or safety is open.
-
-**Acceptance criteria:**
-- [ ] Discard and Keep both show no email result
-- [ ] Confirm and send before 45:00 shows the blocked reason and no download
-- [ ] At or after 45:00, with every required field confirmed, the page reports one email and a PDF download
-
-**Verification:**
-- [ ] Tests pass: `node --test test/review-flow.test.js`
-- [ ] Build succeeds: `npx next build`
-- [ ] Manual check: in the browser, discard, then a blocked send, then one successful send at 45:00
-
-**Dependencies:** Tasks 3, 4, 6, 8, 10
-
-**Files likely touched:**
-- `src/workspace/review-flow.js`
-- `app/session/page.tsx`
-- `test/review-flow.test.js`
-
-**Estimated scope:** Medium: 3–5 files
-
----
-
-## Checkpoint: After Tasks 9–11
-
-- [ ] `node --test` passes and `npx next build` succeeds
-- [ ] Playback, disconnect, and the send gate work on synthetic data
-- [ ] Review with human before proceeding
-
----
-
-## Task 12: Gemini drafts
-
-**Description:** Ask Gemini for a Task 2 draft from transcript lines and the question list, then `ground` it. Tests use a recorded response. The request must not ask for a diagnosis code. Refuse a fixture marked `synthetic: false` unless `ALLOW_PHI=1`.
-
-**Acceptance criteria:**
-- [ ] A recorded response with real quotes becomes a grounded draft
+- [ ] A recorded response with real quotes becomes grounded drafts
 - [ ] An invented quote is rejected and nothing is filled
 - [ ] The request body has no instruction to put a diagnosis code on the form
 
 **Verification:**
-- [ ] Tests pass: `node --test test/gemini.test.js`
-- [ ] Build succeeds: `node --check src/draft/gemini.js`
+- [ ] Tests pass: `node --test server/test/gemini.test.js`
+- [ ] Build succeeds: `node --check server/gemini.js`
 - [ ] Manual check: with `GEMINI_API_KEY`, one synthetic ramble only
 
-**Dependencies:** Task 2
+**Dependencies:** Task 3
 
 **Files likely touched:**
-- `src/draft/gemini.js`
-- `fixtures/synthetic/gemini-ramble-response.json`
+- `server/gemini.js`
+- `server/fixtures/gemini-ramble-response.json`
 - `.env.example`
-- `test/gemini.test.js`
+- `server/test/gemini.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 13: Zoom transcript file
+## Task 10: Zoom transcript file
 
-**Description:** Convert a saved Zoom recording-resource JSON file into the same line shape as playback. No network call. Empty timeline means no lines. This is not a Zoom app.
+**Description:** Convert a saved Zoom timeline JSON into the same `{ speaker, text, startMs }` lines. No network call and no Zoom app package.
 
 **Acceptance criteria:**
-- [ ] A fixture timeline becomes ordered `{ speaker, text, startMs }` lines
-- [ ] An empty timeline becomes an empty line list
-- [ ] Those lines pass through Task 2 `ground`
+- [ ] A fixture timeline becomes ordered lines that pass `ground`
+- [ ] An empty timeline becomes no lines
+- [ ] Those lines pass through Task 3 `ground`
 
 **Verification:**
-- [ ] Tests pass: `node --test test/zoom-normalize.test.js`
-- [ ] Build succeeds: `node --check src/zoom/normalize.js`
+- [ ] Tests pass: `node --test server/test/zoom.test.js`
+- [ ] Build succeeds: `node --check server/zoom.js`
 
-**Dependencies:** Task 2
+**Dependencies:** Task 3
 
 **Files likely touched:**
-- `src/zoom/normalize.js`
-- `fixtures/synthetic/zoom-resource.json`
-- `test/zoom-normalize.test.js`
+- `server/zoom.js`
+- `server/fixtures/zoom-resource.json`
+- `server/test/zoom.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 14: ElevenLabs next-question audio
+## Task 11: ElevenLabs prompt audio
 
-**Description:** When a nudge exists, request speech for that question’s prompt text only. Do not send the transcript. Tests use a recorded audio response or a stub body and do not require a live key. This is not speech-to-text.
+**Description:** `play` requests speech for that question’s `followUp` text only. No transcript in the body. No nudge means no request. Tests stub the HTTP call.
 
 **Acceptance criteria:**
-- [ ] The request body is the next nudge prompt and not the transcript
+- [ ] The request body is the prompt string and not the transcript
 - [ ] No nudge means no request
 - [ ] The call URL is a text-to-speech endpoint, not a transcribe endpoint
 
 **Verification:**
-- [ ] Tests pass: `node --test test/speak.test.js`
-- [ ] Build succeeds: `node --check src/speech/speak.js`
-- [ ] Manual check: with `ELEVENLABS_API_KEY`, one synthetic prompt is spoken and no client audio is uploaded
+- [ ] Tests pass: `node --test server/test/speak.test.js`
+- [ ] Build succeeds: `node --check server/speak.js`
+- [ ] Manual check: with `ELEVENLABS_API_KEY`, one synthetic prompt is spoken
 
-**Dependencies:** Task 3
+**Dependencies:** Task 2
 
 **Files likely touched:**
-- `src/speech/speak.js`
+- `server/speak.js`
+- `src/api/liveWorkspace.js`
 - `.env.example`
-- `test/speak.test.js`
+- `server/test/speak.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 15: Simulated focus-drop
+## Task 12: Tiger stores the sent packet
 
-**Description:** A “focus dropped” action selects the same next nudge as Task 3 and Task 14. It stores no image, frame, or camera id. There is no Presage SDK.
-
-**Acceptance criteria:**
-- [ ] The action returns the current first safety nudge when one is open
-- [ ] The returned object has no image, frame, or camera field
-- [ ] An empty nudge list returns no highlight
-
-**Verification:**
-- [ ] Tests pass: `node --test test/focus.test.js`
-- [ ] Build succeeds: `node --check src/session/focus.js`
-
-**Dependencies:** Task 3
-
-**Files likely touched:**
-- `src/session/focus.js`
-- `test/focus.test.js`
-
-**Estimated scope:** Small: 1–2 files
-
----
-
-## Task 16: Tiger stores the sent packet
-
-**Description:** After a successful send, insert one session row (case id, therapist, PDF bytes, `sent_at`) and nudge rows. No raw audio and no full transcript. A refused send writes nothing. Missing `DATABASE_URL` skips the insert.
+**Description:** After Task 8 succeeds, insert one session row (case id, therapist, PDF bytes, `sent_at`) and nudge rows. No raw audio and no full transcript. A refused handoff writes nothing. Missing `DATABASE_URL` skips the insert.
 
 **Acceptance criteria:**
 - [ ] A successful send writes one row whose PDF bytes match the mailed file, plus nudge rows
@@ -426,18 +320,17 @@ Stack: Node ESM, `node:test`, Next.js for pages. Add when a task needs them: `pd
 - [ ] Bound parameters do not include raw audio or the full transcript
 
 **Verification:**
-- [ ] Tests pass: `node --test test/store.test.js`
-- [ ] Build succeeds: `node --check src/store/sessions.js`
+- [ ] Tests pass: `node --test server/test/store.test.js`
+- [ ] Build succeeds: `node --check server/store.js`
 - [ ] Manual check: with Tiger `DATABASE_URL`, one synthetic send is visible
 
-**Dependencies:** Tasks 3, 8
+**Dependencies:** Tasks 7, 8
 
 **Files likely touched:**
 - `package.json`
-- `src/store/sessions.js`
-- `src/handoff/send.js`
+- `server/store.js`, `server/handoff.js`
 - `.env.example`
-- `test/store.test.js`
+- `server/test/store.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -446,6 +339,6 @@ Stack: Node ESM, `node:test`, Next.js for pages. Add when a task needs them: `pd
 ## Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic path: playback, keep/discard, one PDF email at or after 45:00, no duplicate email
+- [ ] Synthetic path: playback events, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Tiger row when `DATABASE_URL` is set
 - [ ] Human approves before live audio, camera, or a real inbox
