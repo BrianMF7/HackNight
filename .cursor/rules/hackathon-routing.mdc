@@ -1,0 +1,24 @@
+---
+description: Route Ponytail, agent-skills slash commands, and pstack so their instructions do not collide.
+alwaysApply: true
+---
+
+# Hackathon routing
+
+Ponytail is a background constraint. Agent-skills slash commands (`/spec`, `/plan`, `/build`, `/test`, `/review`, `/ship`) own the workflow. pstack is rescue only. Do not paste skill bodies into this rule; read the matching file under `.cursor/skills/` when a command names it.
+
+## Phase owners
+
+- `/spec` and `/plan` produce documents only. Ponytail does not skip them or write product code.
+- `/build` is the driver. Agent-skills picks the next task, writes a failing test first, implements the minimum that passes, and stops. Ponytail only vetoes padded implementation: extra dependency, wrapper, option, or file. It does not skip the failing test, shrink assertions, or continue past one task.
+- `/test` owns proof. Ponytail may refuse a new test dependency or homemade runner when a small assert would do. It must not delete, skip, or weaken an assertion `/build` or `/test` added.
+- `/review` is the quality verdict: correctness, readability, architecture, security, performance. `/ponytail-review` runs after it and may only name deletions that do not change behavior and do not drop a keep from `/review`. Bug, security, missing-test, and performance findings from the Ponytail pass are deferred to `/review`.
+- `/ship` owns the launch checklist. Ponytail may refuse a new service, platform, or document `SPEC.md` did not ask for. It must not cut rollback, the deploy command, secrets handling, or the check that the demo runs.
+
+## Rescue
+
+If the user says pstack or `/how`, or a fix has already failed twice, stop `/build`. Use the installed pstack skills `how` and `principle-fix-root-causes`. Do not also run `debugging-and-error-recovery` in that turn. Return to `/build` after the cause is found.
+
+## Stack
+
+Do not adopt Convex, Netlify, Render, or another plugin-recommended stack unless `SPEC.md` names it. Ponytail's ladder wins on new dependencies.
