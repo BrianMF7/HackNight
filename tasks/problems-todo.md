@@ -62,13 +62,13 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** `Progress` hides `value`. `ResizablePanelGroup` requires `className` and drops `direction`. `InputOTP` drops `maxLength` out of the spread type.
 
 **Acceptance criteria:**
-- [ ] `Progress` accepts `value` and optional `className`
-- [ ] `ResizablePanelGroup` requires `direction` and not `className`
-- [ ] `ResizableHandle` accepts `withHandle` without `className`
-- [ ] `InputOTP` still requires `maxLength` and children, and the spread onto `OTPInput` typechecks
+- [x] `Progress` accepts `value` and optional `className`
+- [x] `ResizablePanelGroup` requires `direction` and not `className`
+- [x] `ResizableHandle` accepts `withHandle` without `className`
+- [x] `InputOTP` still requires `maxLength` and children, and the spread onto `OTPInput` typechecks
 
 **Verification:**
-- [ ] Typecheck no longer reports `progress.jsx`, `resizable.jsx`, or `input-otp.jsx`
+- [x] Typecheck no longer reports `progress.jsx`, `resizable.jsx`, or `input-otp.jsx`
 
 **Dependencies:** None
 
