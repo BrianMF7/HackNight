@@ -1,13 +1,13 @@
 // LIVE MODE ONLY. Calls the real Node.js backend for intake sessions.
 // Every route comes from workspaceEndpoints; unset routes are refused, never guessed.
 // The backend is authoritative for required-field, safety, recipient and 45-minute rules.
-import ApiError from "./ApiError";
-import { getBackendUrl, getBackendToken } from "./config";
+import ApiError from "./ApiError.js";
+import { getBackendUrl, getBackendToken } from "./config.js";
 
 // TODO: fill from the backend team's documented contract.
 export const workspaceEndpoints = {
-  getTemplates: null,
-  getTemplate: null,
+  getTemplates: { method: "GET", path: "/api/templates" },
+  getTemplate: { method: "GET", path: "/api/templates/:templateId" },
   createSession: null,
   getTranscript: null,
   getEvents: null, // or a stream/poll route that returns answer updates

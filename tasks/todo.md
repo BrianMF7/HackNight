@@ -40,13 +40,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `GET /api/templates` and `GET /api/templates/:templateId` return `adult-intake-v1` with the same question ids, `required`, and `safety` flags as `src/api/templates/adultIntake.js`. Brief intake and PHQ-9 stay `available: false`.
 
 **Acceptance criteria:**
-- [ ] A contract test fails if a required or safety id drifts from the frontend file
-- [ ] Unknown template id is 404
-- [ ] Brief intake and PHQ-9 list as unavailable
+- [x] A contract test fails if a required or safety id drifts from the frontend file
+- [x] Unknown template id is 404
+- [x] Brief intake and PHQ-9 list as unavailable
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/template.test.js`
-- [ ] Build succeeds: `node --check server/template.js`
+- [x] Tests pass: `node --test server/test/template.test.js`
+- [x] Build succeeds: `node --check server/template.js`
 
 **Dependencies:** Task 1
 

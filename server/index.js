@@ -1,11 +1,13 @@
 import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
+import { getTemplate, listTemplates } from "./template.js";
 
 const DEFAULT_ORIGIN = "http://localhost:5173";
 
 const routes = {
   "GET /api/ping": (_req, res) => json(res, 200, { ok: true }),
+  "GET /api/templates": (_req, res) => json(res, 200, listTemplates()),
 };
 
 export function createServer({
@@ -38,11 +40,28 @@ export function createServer({
     }
 
     const route = routes[`${req.method} ${url.pathname}`];
-    if (!route) {
-      json(res, 404, { message: "Not found", code: "NOT_FOUND" });
+    if (route) {
+      route(req, res);
       return;
     }
-    route(req, res);
+
+    const templateMatch = req.method === "GET" && url.pathname.match(/^\/api\/templates\/([^/]+)$/);
+    if (templateMatch) {
+      let template = null;
+      try {
+        template = getTemplate(decodeURIComponent(templateMatch[1]));
+      } catch {
+        template = null;
+      }
+      if (!template) {
+        json(res, 404, { message: "Not found", code: "NOT_FOUND" });
+        return;
+      }
+      json(res, 200, template);
+      return;
+    }
+
+    json(res, 404, { message: "Not found", code: "NOT_FOUND" });
   });
 }
 
