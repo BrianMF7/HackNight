@@ -3,11 +3,16 @@
 export const PROCESSOR_BUFFER = 2048;
 const TARGET_RATE = 16000;
 
+/** @param {number} sample */
 function clampToInt16(sample) {
   const s = Math.max(-1, Math.min(1, sample));
   return s < 0 ? (s * 0x8000) | 0 : (s * 0x7fff) | 0;
 }
 
+/**
+ * @param {Float32Array} float32
+ * @param {number} sampleRate
+ */
 export function resampleToPcm16(float32, sampleRate) {
   const ratio = sampleRate / TARGET_RATE;
   // shortcut: samples past the last full 16 kHz frame in this buffer are dropped.
@@ -28,6 +33,7 @@ export function resampleToPcm16(float32, sampleRate) {
   return pcm;
 }
 
+/** @param {Int16Array} pcm */
 function pcm16ToBase64(pcm) {
   const bytes = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
   let binary = "";
@@ -74,7 +80,9 @@ export async function startRealtimeStt({
     if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
   };
 
-  await new Promise((resolve, reject) => {
+  /** @type {Promise<void>} */
+  const opened = new Promise((resolve, reject) => {
+    /** @param {unknown} err */
     const fail = (err) => {
       stop();
       reject(err instanceof Error ? err : new Error(String(err)));
@@ -83,6 +91,7 @@ export async function startRealtimeStt({
     ws.onerror = () => fail(new Error("Speech-to-text WebSocket failed to connect"));
     setTimeout(() => fail(new Error("Speech-to-text WebSocket timed out")), 10000);
   });
+  await opened;
 
   ws.onmessage = (ev) => {
     let msg;

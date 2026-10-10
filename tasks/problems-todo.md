@@ -122,12 +122,12 @@ Starting strict count: **235**.
 **Description:** Type the toast reducer state, toast, and action union from the action names the reducer already switches on. `listeners` is an array of listener functions. `new Promise()` in `realtimeStt.js` is `Promise<void>`, and the numeric helpers take numbers. `cn` rest args use the `ClassValue` type `clsx` already accepts.
 
 **Acceptance criteria:**
-- [ ] Strict `tsc` no longer reports `use-toast.jsx`, `realtimeStt.js`, or `utils.js`
-- [ ] `node --test src/lib/realtimeStt.test.js` passes
+- [x] Strict `tsc` no longer reports `use-toast.jsx`, `realtimeStt.js`, or `utils.js`
+- [x] `node --test src/lib/realtimeStt.test.js` passes
 
 **Verification:**
-- [ ] Strict `tsc` error list no longer names those files
-- [ ] `node --test src/lib/realtimeStt.test.js`
+- [x] Strict `tsc` error list no longer names those files
+- [x] `node --test src/lib/realtimeStt.test.js`
 
 **Dependencies:** None
 
