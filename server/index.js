@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
+import { handleSession } from "./session.js";
 import { getTemplate, listTemplates } from "./template.js";
 
 const DEFAULT_ORIGIN = "http://localhost:5173";
@@ -14,7 +15,7 @@ export function createServer({
   token = process.env.BACKEND_TOKEN || "",
   origin = process.env.CORS_ORIGIN || DEFAULT_ORIGIN,
 } = {}) {
-  return http.createServer((req, res) => {
+  return http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
     const requestOrigin = typeof req.headers.origin === "string" ? req.headers.origin : "";
     if (requestOrigin === origin) {
@@ -36,6 +37,22 @@ export function createServer({
         message: "Not signed in to the backend. Check your access token.",
         code: "UNAUTHORIZED",
       });
+      return;
+    }
+
+    let body;
+    if (req.method === "POST") {
+      try {
+        body = await readJson(req);
+      } catch {
+        json(res, 400, { message: "Invalid JSON", code: "BAD_REQUEST" });
+        return;
+      }
+    }
+
+    const sessionResponse = handleSession(req.method, url.pathname, body, Date.now());
+    if (sessionResponse) {
+      json(res, sessionResponse.status, sessionResponse.body);
       return;
     }
 
@@ -72,6 +89,26 @@ function authorized(header, token) {
   const b = Buffer.from(token);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      const raw = Buffer.concat(chunks).toString("utf8");
+      if (!raw) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(raw));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
 }
 
 function json(res, status, body) {

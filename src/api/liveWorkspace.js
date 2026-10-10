@@ -4,13 +4,13 @@
 import ApiError from "./ApiError.js";
 import { getBackendUrl, getBackendToken } from "./config.js";
 
-// TODO: fill from the backend team's documented contract.
+// Unset routes stay null until the task that implements that handler.
 export const workspaceEndpoints = {
   getTemplates: { method: "GET", path: "/api/templates" },
   getTemplate: { method: "GET", path: "/api/templates/:templateId" },
-  createSession: null,
-  getTranscript: null,
-  getEvents: null, // or a stream/poll route that returns answer updates
+  createSession: { method: "POST", path: "/api/sessions" },
+  getTranscript: { method: "GET", path: "/api/sessions/:sessionId/transcript" },
+  getEvents: { method: "GET", path: "/api/sessions/:sessionId/events" },
   recordClinicianAction: null,
   retainDraft: null,
   discardDraft: null,

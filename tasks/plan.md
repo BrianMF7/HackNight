@@ -89,12 +89,12 @@ flowchart TD
 
 - [x] Task 1: Ping, CORS, bearer
 - [x] Task 2: Canonical adult-intake template
-- [ ] Task 3: Synthetic session, transcript, grounded events
+- [x] Task 3: Synthetic session, transcript, grounded events
 
 ### Checkpoint: After Tasks 1–3
 
-- [ ] `node --test` passes
-- [ ] Live mode can ping, load the template, and create a session whose events match the fixture
+- [x] `node --test` passes
+- [x] Live mode can ping, load the template, and create a session whose events match the fixture
 - [ ] Human review before the next phase
 
 ### Phase 2: Clock and the clinician’s choice

@@ -64,14 +64,14 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `POST /api/sessions` plus transcript and events from `src/api/fixtures/syntheticSession.js`. `ground` accepts a draft only when every quote is a substring of the transcript. Unknown field ids and invented quotes throw. Silence does not become “no”. Wire createSession, getTranscript, and getEvents in the live adapter.
 
 **Acceptance criteria:**
-- [ ] The fixture events pass `ground`
-- [ ] An invented quote fills nothing
-- [ ] `load` rejects paths outside the synthetic fixture dir
+- [x] The fixture events pass `ground`
+- [x] An invented quote fills nothing
+- [x] `load` rejects paths outside the synthetic fixture dir
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/session.test.js server/test/ground.test.js`
-- [ ] Build succeeds: `node --check server/session.js && node --check server/ground.js`
-- [ ] Manual check: live mode creates a session and events match the fixture
+- [x] Tests pass: `node --test server/test/session.test.js server/test/ground.test.js`
+- [x] Build succeeds: `node --check server/session.js && node --check server/ground.js`
+- [x] Manual check: live mode creates a session and events match the fixture
 
 **Dependencies:** Task 2
 
@@ -86,8 +86,8 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ## Checkpoint: After Tasks 1–3
 
-- [ ] `node --test` passes
-- [ ] Live mode can ping, load the template, and create a session whose events match the fixture
+- [x] `node --test` passes
+- [x] Live mode can ping, load the template, and create a session whose events match the fixture
 - [ ] Review with human before proceeding
 
 ---
