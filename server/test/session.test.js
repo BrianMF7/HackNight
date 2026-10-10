@@ -75,6 +75,66 @@ test("POST /api/sessions returns the workspace shape and events match the fixtur
   assert.deepEqual(await eventsRes.json(), events);
 });
 
+test("live create starts empty, and one append is the only transcript line", async () => {
+  const created = await fetch(`${base}/api/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      templateId: "adult-intake-v1",
+      therapistName: "Dr. Rowan Ellis (synthetic)",
+      therapistEmail: "therapist@example.com",
+      live: true,
+    }),
+  });
+  assert.equal(created.status, 200);
+  const session = await created.json();
+
+  const transcriptRes = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+  assert.equal(transcriptRes.status, 200);
+  assert.deepEqual(await transcriptRes.json(), []);
+
+  const eventsRes = await fetch(`${base}/api/sessions/${session.id}/events`, { headers: authHeaders() });
+  assert.equal(eventsRes.status, 200);
+  assert.deepEqual(await eventsRes.json(), []);
+
+  const line = { t: 4, speaker: "Clinician", text: "What brings you in today?" };
+  const appended = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(line),
+  });
+  assert.equal(appended.status, 200);
+  assert.deepEqual(await appended.json(), line);
+
+  const after = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+  assert.deepEqual(await after.json(), [line]);
+  const eventsAfter = await fetch(`${base}/api/sessions/${session.id}/events`, { headers: authHeaders() });
+  assert.deepEqual(await eventsAfter.json(), []);
+});
+
+test("an empty transcript line is 400 and adds nothing", async () => {
+  const created = await fetch(`${base}/api/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ templateId: "adult-intake-v1" }),
+  });
+  assert.equal(created.status, 200);
+  const session = await created.json();
+  const beforeRes = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+  assert.deepEqual(await beforeRes.json(), transcript);
+
+  const appended = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ t: 1, speaker: "Clinician", text: "   " }),
+  });
+  assert.equal(appended.status, 400);
+  assert.equal((await appended.json()).code, "BAD_REQUEST");
+
+  const afterRes = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+  assert.deepEqual(await afterRes.json(), transcript);
+});
+
 test("an unknown template id is 404", async () => {
   const res = await fetch(`${base}/api/sessions`, {
     method: "POST",

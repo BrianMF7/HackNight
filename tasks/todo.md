@@ -325,13 +325,13 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** `POST /api/sessions` with `live: true` stores `transcript: []`, `events: []`, and `live: true`. A create without that flag still copies the synthetic fixture, which is what Task 9b drafts against. `POST .../transcript-lines` appends onto whichever transcript the session has. Workspace sends `live: true` only when the mode is live.
 
 **Acceptance criteria:**
-- [ ] Live create, one append, then GET transcript returns exactly that one line, and GET events is `[]`
-- [ ] Create without `live: true` still returns the fixture transcript
-- [ ] An empty text append is still 400 and adds no line
+- [x] Live create, one append, then GET transcript returns exactly that one line, and GET events is `[]`
+- [x] Create without `live: true` still returns the fixture transcript
+- [x] An empty text append is still 400 and adds no line
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/session.test.js`
-- [ ] Build succeeds: `node --check server/session.js`
+- [x] Tests pass: `node --test server/test/session.test.js`
+- [x] Build succeeds: `node --check server/session.js`
 - [ ] Manual check: live mode’s new session does not show the synthetic ramble before anyone speaks
 
 **Dependencies:** Tasks 3, 11
@@ -347,8 +347,8 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Checkpoint: After Tasks 9c-1 and 9c-2
 
-- [ ] `npm run test:stt` and `node --test server/test/session.test.js` pass
-- [ ] A live session’s transcript is only appended lines; a non-live session is still the fixture
+- [x] `npm run test:stt` and `node --test server/test/session.test.js` pass
+- [x] A live session’s transcript is only appended lines; a non-live session is still the fixture
 - [ ] Review with human before Gemini runs on live lines
 
 ---

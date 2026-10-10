@@ -117,6 +117,7 @@ export async function handleSession(method, pathname, body, now) {
       ? body.therapistName.trim()
       : syntheticSession.therapist.name;
     const email = typeof body?.therapistEmail === "string" ? body.therapistEmail.trim() : "";
+    const live = body?.live === true;
     const record = {
       id: randomUUID(),
       patientLabel: syntheticSession.patientLabel,
@@ -124,8 +125,9 @@ export async function handleSession(method, pathname, body, now) {
       plannedMinutes: 45,
       templateId: form.id,
       startedAt: now,
-      transcript: transcript.map((line) => ({ ...line })),
-      events: servedEvents,
+      transcript: live ? [] : transcript.map((line) => ({ ...line })),
+      events: live ? [] : servedEvents,
+      live,
       answers: {},
     };
     sessions.set(record.id, record);

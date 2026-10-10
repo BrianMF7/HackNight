@@ -29,7 +29,12 @@ export default function Workspace() {
 
   useEffect(() => {
     workspaceApi
-      .createSession({ templateId: "adult-intake-v1", therapistName: "Dr. Rowan Ellis (synthetic)", therapistEmail: "therapist@example.com" })
+      .createSession({
+        templateId: "adult-intake-v1",
+        therapistName: "Dr. Rowan Ellis (synthetic)",
+        therapistEmail: "therapist@example.com",
+        ...(getMode() === "live" ? { live: true } : {}),
+      })
       .then(setInfo)
       .catch(setError);
   }, []);
