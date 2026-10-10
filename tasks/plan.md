@@ -87,7 +87,7 @@ flowchart TD
 
 ### Phase 1: Server the UI can reach
 
-- [ ] Task 1: Ping, CORS, bearer
+- [x] Task 1: Ping, CORS, bearer
 - [ ] Task 2: Canonical adult-intake template
 - [ ] Task 3: Synthetic session, transcript, grounded events
 

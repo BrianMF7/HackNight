@@ -13,13 +13,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `server/index.js` answers `GET /api/ping`. Missing or wrong bearer is 401. CORS allows the Vite origin. Set `endpoints.ping` in `src/api/endpoints.js`.
 
 **Acceptance criteria:**
-- [ ] Connection settings “Save and test” can succeed against the local server
-- [ ] A bad token returns 401 and the UI shows that error
-- [ ] `endpoints.ping` is `{ method: "GET", path: "/api/ping" }`
+- [x] Connection settings “Save and test” can succeed against the local server
+- [x] A bad token returns 401 and the UI shows that error
+- [x] `endpoints.ping` is `{ method: "GET", path: "/api/ping" }`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/ping.test.js`
-- [ ] Build succeeds: `node --check server/index.js`
+- [x] Tests pass: `node --test server/test/ping.test.js`
+- [x] Build succeeds: `node --check server/index.js`
 - [ ] Manual check: connection dialog against `http://localhost:8787`
 
 **Dependencies:** None

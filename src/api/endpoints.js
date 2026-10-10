@@ -5,7 +5,7 @@
 //
 // Each entry: { method: "GET"|"POST"|..., path: "/exact/path/:param" }
 export const endpoints = {
-  ping: null,
+  ping: { method: "GET", path: "/api/ping" },
   listPatients: null,
   createPatient: null,
   listSessions: null,
