@@ -3,6 +3,16 @@ import { X, ArrowRight, Volume2, BellOff, MessageCircleQuestion, CheckCircle2 } 
 import { Button } from "@/components/ui/button";
 
 // Compact, discreet cues along the top-right of the document panel. Max 2 shown at once.
+/**
+ * @typedef {import("./useIntakeSession").IntakeNotification} IntakeNotification
+ * @param {{
+ *   notifications: IntakeNotification[],
+ *   onReview: (fieldId: string) => void,
+ *   onDismiss: (key: string) => void,
+ *   onSnooze: (fieldId: string) => void,
+ *   onPlay: (fieldId: string) => void | Promise<void>,
+ * }} props
+ */
 export default function NotificationStack({ notifications, onReview, onDismiss, onSnooze, onPlay }) {
   const visible = notifications.slice(-2);
   if (!visible.length) return null;

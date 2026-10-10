@@ -3,19 +3,44 @@ import { Download, Send, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { workspaceApi } from "@/api";
+import { isErrorShape } from "@/api/ApiError";
 import ReviewDocument from "./ReviewDocument";
 import ReviewSummary from "./ReviewSummary";
 import HandoffConfirmDialog from "./HandoffConfirmDialog";
 import BlockedHandoffAlert from "./BlockedHandoffAlert";
 
+/**
+ * @typedef {{ code: string, message: string }} HandoffReason
+ * @typedef {{ to: string }} HandoffSent
+ * @typedef {import("./applyLiveDrafts").FieldState} FieldState
+ */
+
 // "Review Clinical Intake Documentation". Sending needs explicit approval, and the backend
 // has the final say: a refusal is shown as-is and the frontend never retries around it.
+/**
+ * @param {{
+ *   open: boolean,
+ *   onClose: () => void,
+ *   session: {
+ *     questionState: (id: string) => FieldState,
+ *     confirmedIds: string[],
+ *     elapsed: number,
+ *   },
+ *   sessionInfo: {
+ *     id: string,
+ *     therapist: { name?: string, email?: string },
+ *     plannedMinutes: number,
+ *   },
+ *   sessionStatus: string,
+ *   onKeepDraft: () => void | Promise<void>,
+ * }} props
+ */
 export default function ReviewModal({ open, onClose, session, sessionInfo, sessionStatus, onKeepDraft }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [blocked, setBlocked] = useState(null);
-  const [sent, setSent] = useState(null);
-  const [error, setError] = useState(null);
+  const [blocked, setBlocked] = useState(/** @type {HandoffReason[] | null} */ (null));
+  const [sent, setSent] = useState(/** @type {HandoffSent | null} */ (null));
+  const [error, setError] = useState(/** @type {string | null} */ (null));
 
   const send = async () => {
     setBusy(true); setError(null);
@@ -29,7 +54,7 @@ export default function ReviewModal({ open, onClose, session, sessionInfo, sessi
       });
       if (res.allowed) setSent(res); else setBlocked(res.reasons);
     } catch (e) {
-      setError(e.message);
+      setError(isErrorShape(e) && e.message ? e.message : null);
     }
     setConfirming(false);
     setBusy(false);

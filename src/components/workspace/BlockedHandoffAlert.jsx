@@ -3,6 +3,13 @@ import { ShieldX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Shows the backend's refusal reasons verbatim. The frontend never overrides them.
+/**
+ * @param {{
+ *   reasons: Array<{ code: string, message: string }>,
+ *   onKeepDraft: () => void,
+ *   onReturn: () => void,
+ * }} props
+ */
 export default function BlockedHandoffAlert({ reasons, onKeepDraft, onReturn }) {
   return (
     <div role="alert" className="rounded-lg border border-red-200 bg-red-50 p-4">

@@ -6,6 +6,20 @@ import { statusStyles } from "./statusStyles";
 import { PHQ_CATEGORIES } from "@/api/templates/adultIntake";
 
 // One fixed question in the clinical document. The label never changes; only the response does.
+/**
+ * @typedef {import("../../api/templates/adultIntake").IntakeQuestion} IntakeQuestion
+ * @typedef {import("./applyLiveDrafts").FieldState} FieldState
+ * @param {{
+ *   q: IntakeQuestion,
+ *   state: FieldState,
+ *   highlighted?: boolean,
+ *   snoozed?: boolean,
+ *   onConfirm: (fieldId: string, editedAnswer?: string) => void | Promise<void>,
+ *   onSaveEdit: (fieldId: string, text: string) => void | Promise<void>,
+ *   onPlay: (fieldId: string) => void | Promise<void>,
+ *   readOnly?: boolean,
+ * }} props
+ */
 export default function QuestionRow({ q, state, highlighted, snoozed, onConfirm, onSaveEdit, onPlay, readOnly }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
@@ -13,6 +27,7 @@ export default function QuestionRow({ q, state, highlighted, snoozed, onConfirm,
   const st = statusStyles[state.status];
   const answered = state.status !== "not_answered";
 
+  /** @param {() => void | Promise<void>} fn */
   const run = async (fn) => { setBusy(true); await fn(); setBusy(false); };
 
   return (

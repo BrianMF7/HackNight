@@ -4,9 +4,19 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 // Keeping a draft never sends anything. Discarding needs a second explicit confirmation.
+/**
+ * @param {{
+ *   open: boolean,
+ *   canReconnect?: boolean,
+ *   onKeep: () => void | Promise<void>,
+ *   onDiscard: () => void | Promise<void>,
+ *   onReturn: () => void,
+ * }} props
+ */
 export default function PatientLeftModal({ open, canReconnect, onKeep, onDiscard, onReturn }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [busy, setBusy] = useState(false);
+  /** @param {() => void | Promise<void>} fn */
   const run = async (fn) => { setBusy(true); await fn(); setBusy(false); setConfirmDiscard(false); };
 
   return (

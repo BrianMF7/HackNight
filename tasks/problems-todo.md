@@ -57,11 +57,11 @@ Starting strict count: **235**.
 **Description:** Prop bindings on the workspace components are implicit `any`. Annotate the props they already destructure, using the question, status, and session typedefs. `statusStyles` is indexed only with the status union.
 
 **Acceptance criteria:**
-- [ ] Strict `tsc` no longer reports the workspace presentational files
-- [ ] Status indexing uses `not_answered | partial | draft | clarify | confirmed`
+- [x] Strict `tsc` no longer reports the workspace presentational files
+- [x] Status indexing uses `not_answered | partial | draft | clarify | confirmed`
 
 **Verification:**
-- [ ] Strict `tsc` error list no longer names `BlockedHandoffAlert.jsx`, `ChatPanel.jsx`, `ClinicalDocument.jsx`, `DocumentHeader.jsx`, `HandoffConfirmDialog.jsx`, `NotificationStack.jsx`, `OutstandingQueue.jsx`, `PatientLeftModal.jsx`, `QuestionRow.jsx`, `ReviewDocument.jsx`, `ReviewModal.jsx`, `ReviewSummary.jsx`, `SessionTimerBar.jsx`, `statusStyles.js`, or `VideoPane.jsx`
+- [x] Strict `tsc` error list no longer names `BlockedHandoffAlert.jsx`, `ChatPanel.jsx`, `ClinicalDocument.jsx`, `DocumentHeader.jsx`, `HandoffConfirmDialog.jsx`, `NotificationStack.jsx`, `OutstandingQueue.jsx`, `PatientLeftModal.jsx`, `QuestionRow.jsx`, `ReviewDocument.jsx`, `ReviewModal.jsx`, `ReviewSummary.jsx`, `SessionTimerBar.jsx`, `statusStyles.js`, or `VideoPane.jsx`
 
 **Dependencies:** Tasks A and B
 

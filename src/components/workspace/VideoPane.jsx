@@ -3,11 +3,26 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Sparkles, User, 
 import { Button } from "@/components/ui/button";
 import { workspaceApi } from "@/api";
 import { getMode } from "@/api/config";
+import { isErrorShape } from "@/api/ApiError";
 import { startRealtimeStt } from "@/lib/realtimeStt";
 import { formatClock } from "./statusStyles";
 import ChatPanel from "./ChatPanel";
 
+/**
+ * @typedef {{ t: number, speaker: string, text: string }} TranscriptLine
+ */
+
 // Video is still a demo placeholder. Mic in live mode streams to ElevenLabs realtime STT.
+/**
+ * @param {{
+ *   session: { connection: "connected" | "patient_left", paused: boolean, elapsed: number },
+ *   sessionInfo?: { startedAt?: number } | null,
+ *   patientLabel: string,
+ *   onEnd: () => void,
+ *   onSimulateDisconnect: () => void,
+ *   onCommittedTranscript?: (line: TranscriptLine) => void | Promise<void>,
+ * }} props
+ */
 export default function VideoPane({
   session,
   sessionInfo,
@@ -22,7 +37,7 @@ export default function VideoPane({
   const [partial, setPartial] = useState("");
   const [sttError, setSttError] = useState("");
   const [listening, setListening] = useState(false);
-  const stopRef = useRef(null);
+  const stopRef = useRef(/** @type {{ stop: () => void } | null} */ (null));
   const startedAtRef = useRef(sessionInfo?.startedAt || Date.now());
   const live = session.connection === "connected";
   const liveMode = getMode() === "live";
@@ -72,7 +87,7 @@ export default function VideoPane({
         setListening(true);
       } catch (err) {
         if (!cancelled) {
-          setSttError(err.message || "Could not start speech-to-text");
+          setSttError(isErrorShape(err) && err.message ? err.message : "Could not start speech-to-text");
           setListening(false);
         }
       }

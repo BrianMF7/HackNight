@@ -7,6 +7,7 @@ export const statusStyles = {
   confirmed: { label: "Clinician Confirmed", badge: "bg-primary text-primary-foreground border-primary", bar: "bg-primary", dot: "bg-primary" },
 };
 
+/** @param {number} sec */
 export const formatClock = (sec) => {
   const s = Math.max(0, Math.floor(sec));
   const m = Math.floor(s / 60);

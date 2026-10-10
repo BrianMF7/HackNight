@@ -4,6 +4,18 @@ import { formatClock } from "./statusStyles";
 import { allQuestions } from "@/api/templates/adultIntake";
 
 // Display only. The backend enforces the 45-minute handoff gate; this bar never decides eligibility.
+/**
+ * @typedef {import("../../api/templates/adultIntake").AnswerStatus} AnswerStatus
+ * @param {{
+ *   session: {
+ *     elapsed: number,
+ *     outstanding: { length: number },
+ *     questionState: (id: string) => { status: AnswerStatus },
+ *   },
+ *   plannedMinutes: number,
+ *   mode: string,
+ * }} props
+ */
 export default function SessionTimerBar({ session, plannedMinutes, mode }) {
   const total = plannedMinutes * 60;
   const remaining = total - session.elapsed;

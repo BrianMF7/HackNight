@@ -4,6 +4,15 @@ import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter } from "@/components/ui/alert-dialog";
 
 // Final deliberate approval. Nothing is transmitted until the clinician clicks Send here.
+/**
+ * @param {{
+ *   open: boolean,
+ *   therapist?: { name?: string, email?: string } | null,
+ *   busy: boolean,
+ *   onCancel: () => void,
+ *   onSend: () => void | Promise<void>,
+ * }} props
+ */
 export default function HandoffConfirmDialog({ open, therapist, busy, onCancel, onSend }) {
   return (
     <AlertDialog open={open}>

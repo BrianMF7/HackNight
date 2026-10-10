@@ -3,8 +3,17 @@ import { ShieldAlert, CircleDashed, CheckCircle2, Mail, Activity } from "lucide-
 import { allQuestions } from "@/api/templates/adultIntake";
 
 // Left rail of the review modal: what still needs the clinician's attention.
+/**
+ * @typedef {import("../../api/templates/adultIntake").AnswerStatus} AnswerStatus
+ * @param {{
+ *   session: { questionState: (id: string) => { status: AnswerStatus } },
+ *   therapist?: { name?: string, email?: string } | null,
+ *   sessionStatus: string,
+ * }} props
+ */
 export default function ReviewSummary({ session, therapist, sessionStatus }) {
   const required = allQuestions.filter((q) => q.required);
+  /** @param {string} id */
   const st = (id) => session.questionState(id).status;
   const confirmed = required.filter((q) => st(q.id) === "confirmed");
   const safetyOpen = required.filter((q) => q.safety && st(q.id) !== "confirmed");

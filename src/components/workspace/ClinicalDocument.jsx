@@ -6,7 +6,7 @@ import QuestionRow from "./QuestionRow";
 /**
  * @param {{
  *   session: {
- *     questionState: (id: string) => { status?: string, answer?: string, category?: string },
+ *     questionState: (id: string) => import("./applyLiveDrafts").FieldState,
  *     snoozed: { [fieldId: string]: boolean | undefined },
  *     confirm: (fieldId: string, editedAnswer?: string) => void | Promise<void>,
  *     saveEdit: (fieldId: string, text: string) => void | Promise<void>,

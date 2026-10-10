@@ -3,6 +3,10 @@ import { adultIntake } from "@/api/templates/adultIntake";
 import { statusStyles } from "./statusStyles";
 
 // Read-only full PDF preview used by the end-of-session review. Same fixed template pages.
+/**
+ * @typedef {import("./applyLiveDrafts").FieldState} FieldState
+ * @param {{ session: { questionState: (id: string) => FieldState } }} props
+ */
 export default function ReviewDocument({ session }) {
   return (
     <div className="space-y-6">

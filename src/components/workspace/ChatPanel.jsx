@@ -4,9 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 
 // Optional text chat. Demo only: messages stay in this browser tab and go nowhere.
+/**
+ * @param {{ onClose: () => void }} props
+ */
 export default function ChatPanel({ onClose }) {
-  const [msgs, setMsgs] = useState([{ from: "Patient", text: "Hi, can you hear me okay? (synthetic)" }]);
+  const [msgs, setMsgs] = useState(/** @type {Array<{ from: string, text: string }>} */ ([
+    { from: "Patient", text: "Hi, can you hear me okay? (synthetic)" },
+  ]));
   const [text, setText] = useState("");
+  /** @param {React.FormEvent<HTMLFormElement>} e */
   const send = (e) => {
     e.preventDefault();
     if (!text.trim()) return;

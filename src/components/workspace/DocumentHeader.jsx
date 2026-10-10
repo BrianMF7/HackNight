@@ -5,12 +5,25 @@ import { Progress } from "@/components/ui/progress";
 import { adultIntake, allQuestions } from "@/api/templates/adultIntake";
 
 // Title, progress, page + section navigation for the live document.
+/**
+ * @typedef {import("../../api/templates/adultIntake").AnswerStatus} AnswerStatus
+ * @param {{
+ *   session: { questionState: (id: string) => { status: AnswerStatus } },
+ *   focusMode: boolean,
+ *   onToggleFocus: () => void,
+ *   onPreview: () => void,
+ * }} props
+ */
 export default function DocumentHeader({ session, focusMode, onToggleFocus, onPreview }) {
   const required = allQuestions.filter((q) => q.required);
   const confirmed = required.filter((q) => session.questionState(q.id).status === "confirmed").length;
-  const drafted = required.filter((q) => ["draft", "partial", "clarify"].includes(session.questionState(q.id).status)).length;
+  const drafted = required.filter((q) => {
+    const status = session.questionState(q.id).status;
+    return status === "draft" || status === "partial" || status === "clarify";
+  }).length;
   const pct = Math.round((confirmed / required.length) * 100);
 
+  /** @param {string} id */
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const sections = adultIntake.pages.flatMap((p) => p.sections.map((s) => ({ id: s.id, title: s.title, page: p.page })));
 

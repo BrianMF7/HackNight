@@ -8,3 +8,12 @@ export default class ApiError extends Error {
     this.fieldErrors = fieldErrors; // { fieldName: "message" } as returned by the backend
   }
 }
+
+/**
+ * @typedef {{ message?: string, status?: number, data?: { extra_data?: { reason?: string } } }} ErrorShape
+ * @param {unknown} error
+ * @returns {error is ErrorShape}
+ */
+export function isErrorShape(error) {
+  return typeof error === "object" && error !== null;
+}

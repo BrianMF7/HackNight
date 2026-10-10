@@ -3,6 +3,15 @@ import { ChevronDown, ChevronUp, ShieldAlert, Volume2 } from "lucide-react";
 
 // Compact queue of required items without a draft. Safety items sort first.
 // "Later" only hides the visual highlight; it never marks a question complete.
+/**
+ * @typedef {import("../../api/templates/adultIntake").IntakeQuestionRef} IntakeQuestionRef
+ * @param {{
+ *   outstanding: IntakeQuestionRef[],
+ *   snoozed: Record<string, boolean>,
+ *   onJump: (id: string) => void,
+ *   onPlay: (id: string) => void | Promise<void>,
+ * }} props
+ */
 export default function OutstandingQueue({ outstanding, snoozed, onJump, onPlay }) {
   const [open, setOpen] = useState(false);
   const safety = outstanding.filter((q) => q.safety).length;
