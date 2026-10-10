@@ -13,14 +13,14 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** `Button`, `Input`, `Textarea`, `Label`, and `Badge` are the props behind most call-site errors. Annotate the props they already forward.
 
 **Acceptance criteria:**
-- [ ] `Button` accepts `variant`, `size`, `asChild`, `children`, and button attributes, and still rejects an unknown variant
-- [ ] `Input`, `Textarea`, and `Label` accept the attributes their call sites already pass
-- [ ] `Badge` accepts `variant` and `children` without a required `className`
-- [ ] No new diagnostics in these files
+- [x] `Button` accepts `variant`, `size`, `asChild`, `children`, and button attributes, and still rejects an unknown variant
+- [x] `Input`, `Textarea`, and `Label` accept the attributes their call sites already pass
+- [x] `Badge` accepts `variant` and `children` without a required `className`
+- [x] No new diagnostics in these files
 
 **Verification:**
-- [ ] `npx tsc -p ./jsconfig.json --noEmit --pretty false` no longer reports these five files, and the total error count drops
-- [ ] `npx eslint src/components/ui/button.jsx src/components/ui/input.jsx src/components/ui/textarea.jsx src/components/ui/label.jsx src/components/ui/badge.jsx`
+- [x] `npx tsc -p ./jsconfig.json --noEmit --pretty false` no longer reports these five files, and the total error count drops
+- [x] `npx eslint src/components/ui/button.jsx src/components/ui/input.jsx src/components/ui/textarea.jsx src/components/ui/label.jsx src/components/ui/badge.jsx`
 
 **Dependencies:** None
 
