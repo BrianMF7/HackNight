@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
+import { workspaceEndpoints } from "../../src/api/liveWorkspace.js";
 import { createServer } from "../index.js";
 import { handleSession } from "../session.js";
 import { handleCall } from "../video.js";
@@ -33,6 +34,10 @@ async function newSession(live) {
 }
 
 const startCall = (sessionId, opts) => handleCall("POST", `/api/sessions/${sessionId}/call`, NOW, opts);
+
+test("the live adapter routes startCall to the call endpoint", () => {
+  assert.deepEqual(workspaceEndpoints.startCall, { method: "POST", path: "/api/sessions/:sessionId/call" });
+});
 
 test("a live session gets a private Daily room with chat and knocking, plus an owner token for that room", async () => {
   const daily = fakeDaily();

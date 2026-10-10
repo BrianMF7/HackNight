@@ -83,6 +83,12 @@ export const mockWorkspace = {
     throw new ApiError("Realtime speech-to-text needs live backend mode.", { code: "MOCK_MODE" });
   },
 
+  // A Daily video room needs live mode + the Node server holding DAILY_API_KEY.
+  /** @returns {Promise<{ roomUrl: string, token: string }>} */
+  async startCall(/** @type {SessionRef} */ _ref) {
+    throw new ApiError("Video calls need live backend mode.", { code: "MOCK_MODE" });
+  },
+
   async appendTranscriptLine(/** @type {TranscriptInput} */ _line) { await delay(50); return { ok: true, demo: true }; },
 
   /** @returns {Promise<import("../components/workspace/applyLiveDrafts.js").DraftResponse>} */

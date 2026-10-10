@@ -674,7 +674,7 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Verification:**
 - [x] Tests pass: `node --test server/test/video.test.js`
 - [x] Build succeeds: `node --check server/video.js && node --check server/index.js`
-- [ ] Manual check: with a real `DAILY_API_KEY`, the returned room URL opens Daily's prejoin screen
+- [x] Manual check: with a real `DAILY_API_KEY`, the returned room URL opens Daily's prejoin screen (Daily reports the room private with chat, knocking, and prejoin on and a 2h `exp`; the owner token validates for that room; the link shows "Locked by host", then "Request to join")
 
 **Dependencies:** Task 11 (live sessions)
 
@@ -689,25 +689,26 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Task 14: The call in VideoPane
 
-**Description:** In live mode the workspace calls `startCall` and joins with `Daily.createCallObject()`. The patient's video and audio play in the patient-feed slot and the local video in the self view. The mic and camera buttons drive `setLocalAudio` and `setLocalVideo`; the mic button still stops the clinician's Scribe stream. A knocking patient shows an "Admit patient" button. `ChatPanel` sends and lists Daily `app-message` chat (`{ event: "chat-msg", message, name }`). `participant-left` opens the keep/discard modal, End Call leaves, and the header copies the patient link. If `startCall` fails (for example `NO_VIDEO_KEY`), mic-only live mode stays exactly as it is. Demo mode keeps the placeholder.
+**Description:** In live mode the workspace calls `startCall` and joins with `Daily.createCallObject()`. The patient's video and audio play in the patient-feed slot and the local video in the self view. The mic and camera buttons drive `setLocalAudio` and `setLocalVideo`; the mic button still stops the clinician's Scribe stream. A knocking patient shows an "Admit <name>" button. `ChatPanel` sends and lists Daily `app-message` chat (`{ event: "chat-msg", message, name, room: "main-room" }`, the shape Daily's hosted page reads and writes). `participant-left` opens the keep/discard modal, End Call leaves, and a "Copy patient link" button in the pane copies the room URL. If `startCall` fails (for example `NO_VIDEO_KEY`), mic-only live mode stays exactly as it is. Demo mode keeps the placeholder.
 
 **Acceptance criteria:**
-- [ ] A desktop and a phone hold a call; the patient knocks and is admitted
-- [ ] Chat flows both ways between our panel and the hosted page
-- [ ] The patient leaving opens the keep/discard modal
-- [ ] Without `DAILY_API_KEY`, mic-only live mode still transcribes; demo mode is unchanged
+- [ ] A desktop and a phone hold a call; the patient knocks and is admitted (two tabs on one laptop passed: knock, admit, the patient's 960×540 video and audio play in the pane; phone still to do)
+- [x] Chat flows both ways between our panel and the hosted page
+- [x] The patient leaving opens the keep/discard modal (a real leave fires the same handler as "Simulate patient leaving"; End Call does not fire it)
+- [ ] Without `DAILY_API_KEY`, mic-only live mode still transcribes; demo mode is unchanged (passed: "Mic only · Daily is not configured…" with no call UI, and demo mode unchanged; not re-run with a live mic, though the STT effect is untouched)
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/*.test.js src/lib/*.test.js`
-- [ ] Build succeeds: `npm run typecheck && npx eslint . --quiet && npm run build`
-- [ ] Manual check: two devices, admit, chat both ways, patient leaves
+- [x] Tests pass: `node --test server/test/*.test.js src/lib/*.test.js`
+- [x] Build succeeds: `npm run typecheck && npx eslint . --quiet && npm run build`
+- [ ] Manual check: two devices, admit, chat both ways, patient leaves (two-tab rehearsal passed through a throwaway page mounting the real `VideoPane`; the login-gated `/app/workspace` and a phone are still to do)
 
 **Dependencies:** Task 13
 
 **Files likely touched:**
 - `package.json` (`@daily-co/daily-js`)
 - `src/api/liveWorkspace.js`, `src/api/index.js`, `src/api/mockWorkspace.js`
-- `src/components/workspace/VideoPane.jsx`, `src/components/workspace/ChatPanel.jsx`, `src/pages/Workspace.jsx`
+- `src/components/workspace/VideoPane.jsx`, `src/components/workspace/ChatPanel.jsx`, `src/components/workspace/dailyChat.js`
+- `server/test/video.test.js`, `src/lib/dailyChat.test.js`
 
 **Estimated scope:** Medium: 5+ files
 
