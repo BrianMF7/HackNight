@@ -8,6 +8,7 @@ export function realtimeWsUrl(token) {
     model_id: REALTIME_MODEL,
     token,
     commit_strategy: "vad",
+    vad_silence_threshold_secs: "0.4",
   });
   return `wss://api.elevenlabs.io/v1/speech-to-text/realtime?${q}`;
 }

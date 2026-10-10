@@ -6,6 +6,8 @@ Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Chec
 
 Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
+**Current slice:** Tasks 9c-1 through 9c-6. Task 11 is done. Task 10 is not a step. Tasks 4, 6, 7, 8, and 12 stay open and are not this slice. The final transcript pass is 9c-5 and 9c-6. It does not run on each commit.
+
 ---
 
 ## Task 1: Ping, CORS, bearer
@@ -292,31 +294,188 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ---
 
-## Task 9c: Drafts from Scribe lines (deferred)
+## Task 9c-1: Shorter VAD commit, 16 kHz PCM
 
-**Description:** Same Gemini + ground path as 9a/9b, but transcript lines come from Task 10’s normalized full Scribe transcript (fed by Task 11 chunks). No new grounding rules. Skip until STT works.
+**Description:** Task 11 already opens the Scribe WebSocket with `commit_strategy=vad`, which waits the default 1.5s of silence, and the browser sends AudioContext-rate PCM in 4096-sample buffers. Set `vad_silence_threshold_secs` to 0.4 (allowed range is above 0.3 through 3.0). Resample the mic buffer to 16 kHz PCM with a box filter and send `sample_rate: 16000`. Use a 2048-sample processor buffer. Partials stay on the overlay. This task does not call Gemini.
 
 **Acceptance criteria:**
-- [ ] Drafts run against Scribe-normalized lines and still pass `ground`
-- [ ] Synthetic fixture path from 9b still works
+- [x] The WebSocket URL includes `commit_strategy=vad` and `vad_silence_threshold_secs=0.4`, and it is still the speech-to-text realtime URL
+- [x] A pure resample of a 48 kHz buffer produces 16-bit PCM at 16 kHz (one output sample per three input samples). Any other AudioContext rate uses `sampleRate / 16000`, not a hardcoded divisor.
+- [x] Token mint tests still pass, including the missing-key case that does not touch the network
+
+**Verification:**
+- [x] Tests pass: `npm run test:stt` and `node --test src/lib/realtimeStt.test.js`
+- [x] Build succeeds: `node --check server/stt.js`
+- [ ] Manual check: a short pause commits well under the old 1.5s wait; the live caption still updates on partials
+
+**Dependencies:** Task 11
+
+**Files likely touched:**
+- `server/stt.js`
+- `server/test/stt.test.js`
+- `src/lib/realtimeStt.js`
+- `src/lib/realtimeStt.test.js`
+
+**Estimated scope:** Medium: 3–5 files
+
+---
+
+## Task 9c-2: Live session transcript starts empty
+
+**Description:** `POST /api/sessions` with `live: true` stores `transcript: []`, `events: []`, and `live: true`. A create without that flag still copies the synthetic fixture, which is what Task 9b drafts against. `POST .../transcript-lines` appends onto whichever transcript the session has. Workspace sends `live: true` only when the mode is live.
+
+**Acceptance criteria:**
+- [ ] Live create, one append, then GET transcript returns exactly that one line, and GET events is `[]`
+- [ ] Create without `live: true` still returns the fixture transcript
+- [ ] An empty text append is still 400 and adds no line
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/session.test.js`
+- [ ] Build succeeds: `node --check server/session.js`
+- [ ] Manual check: live mode’s new session does not show the synthetic ramble before anyone speaks
+
+**Dependencies:** Tasks 3, 11
+
+**Files likely touched:**
+- `server/session.js`
+- `server/test/session.test.js`
+- `src/pages/Workspace.jsx`
+
+**Estimated scope:** Small: 1–2 files plus the create call
+
+---
+
+## Checkpoint: After Tasks 9c-1 and 9c-2
+
+- [ ] `npm run test:stt` and `node --test server/test/session.test.js` pass
+- [ ] A live session’s transcript is only appended lines; a non-live session is still the fixture
+- [ ] Review with human before Gemini runs on live lines
+
+---
+
+## Task 9c-3: Commit response includes grounded drafts
+
+**Description:** On a live session, `POST .../transcript-lines` stores the line first, then runs the existing `draftFromTranscript` and `ground` path and returns `{ t, speaker, text, seq, drafts }`. `seq` is the count of live lines included in that draft. At most one Gemini call runs at a time; a commit that arrives mid-call is stored immediately, and exactly one follow-up runs after the current call, on the full live transcript. The prompt lists only questions not already confirmed in `record.answers`, plus every live line, and it still must not ask for a diagnosis code. The generate call sets `generationConfig.thinkingConfig.thinkingBudget` to 0 and keeps `gemini-2.5-flash`. `synthetic: false`. If `ALLOW_PHI` is unset, or the Gemini fetch fails, the line stays stored, `drafts` is `[]`, and the body includes `code` (`PHI_REFUSED` or `GEMINI_HTTP`). No retry loop. Non-live `POST .../drafts` still uses the recorded fixture body and does not call Gemini. Tests inject fetch the same way `createServer({ fetchImpl })` injects the ElevenLabs fetch.
+
+**Acceptance criteria:**
+- [ ] A live append whose quote is in that line returns a grounded draft in the same response; the injected fetch is called once, the request JSON has `thinkingBudget: 0`, and the prompt text has no diagnosis-code instruction and no confirmed field id
+- [ ] A second append that starts while the first fetch is pending does not start a second fetch until the first settles, then starts exactly one fetch whose transcript includes both lines; each response’s `seq` matches the line count that draft saw
+- [ ] With `ALLOW_PHI` unset, or when the injected fetch fails, the line is still on GET transcript, `drafts` is `[]`, and a failed fetch is not retried. Non-live `POST .../drafts` still returns the recorded AIQ-001 draft and does not call fetch
 
 **Verification:**
 - [ ] Tests pass: `node --test server/test/gemini.test.js`
-- [ ] Manual check: only after Task 11 human approval for live audio
+- [ ] Build succeeds: `node --check server/gemini.js && node --check server/session.js && node --check server/index.js`
+- [ ] Manual check: deferred until 9c-4, with `ALLOW_PHI=1` and a human at the mic
 
-**Dependencies:** Tasks 9b, 10, 11
+**Dependencies:** Tasks 9b, 9c-2
 
 **Files likely touched:**
-- `server/gemini.js`, `server/session.js`
+- `server/gemini.js`
+- `server/session.js`
+- `server/index.js`
 - `server/test/gemini.test.js`
+
+**Estimated scope:** Medium: 3–5 files
+
+---
+
+## Task 9c-4: Form paints those drafts immediately
+
+**Description:** `appendTranscriptLine` already shows the committed line locally before the POST returns. When the response includes `drafts`, write them into `answers` as soon as the response arrives. Do not wait for the demo playhead, and do not copy them into the playback `events` array. Ignore a response whose `seq` is lower than the last one applied. Do not replace an answer whose status is `confirmed`. Partials never call append. Demo mode is unchanged.
+
+**Acceptance criteria:**
+- [ ] A live append response with a draft sets that field’s answer without waiting for `playhead`
+- [ ] A response with a lower `seq` does not overwrite a newer draft, and a confirmed field stays confirmed
+- [ ] Partial captions still update locally and do not POST
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/gemini.test.js` (server contract from 9c-3; this task does not add a component harness)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: in live mode, speak one answer, pause, and see that field fill when the commit returns. Confirm it, speak again, and see it stay confirmed
+
+**Dependencies:** Task 9c-3
+
+**Files likely touched:**
+- `src/components/workspace/useIntakeSession.js`
+- `src/components/workspace/VideoPane.jsx`
 
 **Estimated scope:** Small: 1–2 files
 
 ---
 
-## Task 10: Full Scribe transcript lines
+## Checkpoint: After Tasks 9c-3 and 9c-4
 
-**Description:** Normalize the full ElevenLabs Scribe transcript into the same `{ t, speaker, text }` lines Task 3 already uses. Tests use a recorded Scribe payload (no live network). An empty transcript becomes no lines. Those lines must pass `ground` when quoted. Replaces the old Zoom timeline import. Not required for Tasks 9a–9b.
+- [ ] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no network
+- [ ] One committed line returns grounded drafts in that response; overlapping commits do not run two Gemini calls at once
+- [ ] The form shows the new draft when the commit response arrives, and a confirmed field stays confirmed
+- [ ] Human approves before a live microphone with `ALLOW_PHI=1`
+
+---
+
+## Task 9c-5: Final Gemini pass over the full transcript
+
+**Description:** When review asks for it, `POST /api/sessions/:sessionId/drafts` with `{ pass: "final", drafts }` runs one `gemini-2.5-flash` `generateContent` on the live session’s stored transcript. The prompt includes every live line, every question that is not confirmed in `record.answers`, and the posted drafts as context only. It tells the model to fill a blank or replace a draft when the full transcript supports a quote, and to omit a question when nothing should change. `generationConfig.thinkingConfig.thinkingBudget` is 1024 on this call. The commit path stays at 0. No tool loop and no second model. Output goes through `ground`. Confirmed field ids are removed before the prompt and dropped from the result. An empty transcript returns `{ drafts: [] }` and does not fetch. `synthetic: false`, so `ALLOW_PHI` is required; if it is unset or the fetch fails, return `{ drafts: [], code }` and do not retry. `POST .../drafts` without `pass: "final"` is unchanged: recorded fixture body, no network. This route is not called from `transcript-lines`.
+
+**Acceptance criteria:**
+- [ ] A live session with two stored lines and `{ pass: "final" }` returns grounded drafts from the injected body. The prompt contains both lines and the posted draft text, excludes a confirmed field id, and has no diagnosis-code instruction. The request JSON has `thinkingBudget` 1024.
+- [ ] An invented quote in that body is absent from the result, and a confirmed field id in the model output is absent too
+- [ ] An empty live transcript returns `{ drafts: [] }` and does not fetch. `POST .../drafts` without `pass: "final"` on a non-live session still returns the recorded AIQ-001 draft and does not fetch
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/gemini.test.js`
+- [ ] Build succeeds: `node --check server/gemini.js && node --check server/session.js && node --check server/index.js`
+- [ ] Manual check: deferred until 9c-6
+
+**Dependencies:** Task 9c-3
+
+**Files likely touched:**
+- `server/gemini.js`
+- `server/session.js`
+- `server/index.js`
+- `src/api/liveWorkspace.js`
+- `server/test/gemini.test.js`
+
+**Estimated scope:** Medium: 3–5 files
+
+---
+
+## Task 9c-6: Review applies that pass without clearing omissions
+
+**Description:** Opening review in live mode (End Call or Preview) calls the final pass with the current non-confirmed drafts. The dialog opens immediately with the answers already on the form. When the response arrives, replace a non-confirmed field that the response includes, and fill a field that was empty. A field the response omits stays as it was. A confirmed field stays confirmed. If the transcript line count is unchanged since the last applied final pass, do not call again. Demo mode does not call. A refusal or failed fetch leaves the form as it was.
+
+**Acceptance criteria:**
+- [ ] Opening review in live mode calls `{ pass: "final" }` once, replaces a non-confirmed draft the response includes, and fills a field that was empty
+- [ ] A field the response omits stays, and a confirmed field stays confirmed
+- [ ] Reopening review with no new committed line does not call again. Demo mode does not call
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/gemini.test.js` (server contract from 9c-5; this task does not add a component harness)
+- [ ] Build succeeds: `npm run build`
+- [ ] Manual check: in live mode, speak two answers, end the call, and see a missed field fill or an earlier draft change inside the open review. Confirm a field, reopen review, and see that field unchanged
+
+**Dependencies:** Tasks 9c-4, 9c-5
+
+**Files likely touched:**
+- `src/pages/Workspace.jsx`
+- `src/components/workspace/useIntakeSession.js`
+- `src/components/workspace/ReviewModal.jsx`
+
+**Estimated scope:** Small: 1–2 files plus the review opener
+
+---
+
+## Checkpoint: After Tasks 9c-5 and 9c-6
+
+- [ ] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no `pass` and no network
+- [ ] A final pass fills a blank and replaces a draft; an omitted field and a confirmed field stay as they were
+- [ ] Opening review does not call Gemini again when no new line was committed
+- [ ] Human approves before a live microphone with `ALLOW_PHI=1`
+
+---
+
+## Task 10: Full Scribe transcript file (not this slice)
+
+**Description:** Normalize a recorded full ElevenLabs Scribe transcript into `{ t, speaker, text }` lines. Not required for Tasks 9a, 9b, or 9c. Task 11’s committed lines are already that shape. Leave this until a transcript file is actually an input.
 
 **Acceptance criteria:**
 - [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
@@ -327,7 +486,7 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 - [ ] Tests pass: `node --test server/test/scribe-transcript.test.js`
 - [ ] Build succeeds: `node --check server/scribeTranscript.js`
 
-**Dependencies:** Tasks 3, 11
+**Dependencies:** Task 3. Not Tasks 9c-1–9c-6.
 
 **Files likely touched:**
 - `server/scribeTranscript.js`
@@ -411,7 +570,8 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 - [x] `node --test server/test/gemini.test.js` passes
 - [x] Invented quotes fill nothing; prompt has no diagnosis-code instruction
 - [x] createSession → POST drafts works on the synthetic transcript
-- [ ] Review with human before Task 9c / live Scribe
+- [x] Task 11 is in. Task 9c does not wait on Task 10.
+- [ ] Review with human before 9c-3 (Gemini on live lines)
 
 ---
 
@@ -419,6 +579,6 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 - [ ] `node --test` passes
 - [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
-- [ ] Optional live path: Scribe lines → same drafts endpoint
+- [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Task 10 is not required.
 - [ ] Tiger row when `DATABASE_URL` is set
 - [ ] Human approves before a live microphone, real Scribe session, or a real inbox

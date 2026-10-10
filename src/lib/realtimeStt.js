@@ -1,12 +1,35 @@
 /** Browser mic → ElevenLabs realtime STT via a server-minted single-use token. */
 
-function floatToBase64Pcm16(float32) {
-  const pcm = new Int16Array(float32.length);
-  for (let i = 0; i < float32.length; i++) {
-    const s = Math.max(-1, Math.min(1, float32[i]));
-    pcm[i] = s < 0 ? (s * 0x8000) | 0 : (s * 0x7fff) | 0;
+export const PROCESSOR_BUFFER = 2048;
+const TARGET_RATE = 16000;
+
+function clampToInt16(sample) {
+  const s = Math.max(-1, Math.min(1, sample));
+  return s < 0 ? (s * 0x8000) | 0 : (s * 0x7fff) | 0;
+}
+
+export function resampleToPcm16(float32, sampleRate) {
+  const ratio = sampleRate / TARGET_RATE;
+  // shortcut: samples past the last full 16 kHz frame in this buffer are dropped.
+  const outLen = Math.floor(float32.length / ratio);
+  const pcm = new Int16Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const start = i * ratio;
+    const end = start + ratio;
+    let acc = 0;
+    const last = Math.min(float32.length, Math.ceil(end - 1e-9));
+    for (let idx = Math.floor(start); idx < last; idx++) {
+      const lo = Math.max(start, idx);
+      const hi = Math.min(end, idx + 1);
+      acc += float32[idx] * (hi - lo);
+    }
+    pcm[i] = clampToInt16(acc / ratio);
   }
-  const bytes = new Uint8Array(pcm.buffer);
+  return pcm;
+}
+
+function pcm16ToBase64(pcm) {
+  const bytes = new Uint8Array(pcm.buffer, pcm.byteOffset, pcm.byteLength);
   let binary = "";
   const chunk = 0x8000;
   for (let i = 0; i < bytes.length; i += chunk) {
@@ -33,7 +56,7 @@ export async function startRealtimeStt({
   });
   const ctx = new AudioContext();
   const source = ctx.createMediaStreamSource(stream);
-  const processor = ctx.createScriptProcessor(4096, 1, 1);
+  const processor = ctx.createScriptProcessor(PROCESSOR_BUFFER, 1, 1);
   const silent = ctx.createGain();
   silent.gain.value = 0;
 
@@ -85,9 +108,9 @@ export async function startRealtimeStt({
     const input = e.inputBuffer.getChannelData(0);
     ws.send(JSON.stringify({
       message_type: "input_audio_chunk",
-      audio_base_64: floatToBase64Pcm16(input),
+      audio_base_64: pcm16ToBase64(resampleToPcm16(input, ctx.sampleRate)),
       commit: false,
-      sample_rate: ctx.sampleRate,
+      sample_rate: TARGET_RATE,
     }));
   };
 

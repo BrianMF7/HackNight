@@ -14,6 +14,7 @@ test("realtimeWsUrl uses speech-to-text realtime and the token query param", () 
   assert.match(url, /model_id=scribe_v2_realtime/);
   assert.match(url, /token=sutkn_test/);
   assert.match(url, /commit_strategy=vad/);
+  assert.match(url, /vad_silence_threshold_secs=0\.4/);
   assert.doesNotMatch(url, /text-to-speech/);
 });
 
