@@ -134,11 +134,11 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** ESLint reports three unused imports and two unused catch bindings. Remove the unused names. `catch { }` keeps the same handler.
 
 **Acceptance criteria:**
-- [ ] `npx eslint .` exits 0
-- [ ] The catch handlers still set the same error text
+- [x] `npx eslint .` exits 0
+- [x] The catch handlers still set the same error text
 
 **Verification:**
-- [ ] `npx eslint .`
+- [x] `npx eslint .`
 
 **Dependencies:** None
 
@@ -154,9 +154,9 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 
 ## Checkpoint: After Tasks 1–6
 
-- [ ] `npm run typecheck` exits 0
-- [ ] `npx eslint .` exits 0
-- [ ] No new diagnostics in the files those tasks touched
+- [x] `npm run typecheck` exits 0
+- [x] `npx eslint .` exits 0
+- [x] No new diagnostics in the files those tasks touched
 
 ---
 

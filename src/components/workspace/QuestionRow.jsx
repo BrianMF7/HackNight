@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Pencil, Sparkles, ShieldAlert, Quote, Volume2, Loader2 } from "lucide-react";
+import { Check, Pencil, Sparkles, ShieldAlert, Quote, Volume2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { statusStyles } from "./statusStyles";

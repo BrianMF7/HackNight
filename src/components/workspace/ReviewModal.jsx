@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Download, Send, CheckCircle2, Loader2 } from "lucide-react";
+import { Download, Send, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { workspaceApi } from "@/api";

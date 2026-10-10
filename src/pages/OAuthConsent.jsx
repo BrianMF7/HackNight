@@ -72,7 +72,7 @@ export default function OAuthConsent() {
           return;
         }
         setInfo(data);
-      } catch (e) {
+      } catch {
         setError("Could not load this authorization request. Please try again.");
       } finally {
         if (!redirecting) setChecking(false);
@@ -113,7 +113,7 @@ export default function OAuthConsent() {
         // Show a terminal reconnect state, not an impossible "try again".
         if ([400, 403, 404, 409].includes(res.status)) {
           let detail = "";
-          try { detail = (await res.json()).detail; } catch (_) { /* keep default */ }
+          try { detail = (await res.json()).detail; } catch { /* keep default */ }
           setReconnect(detail || "This authorization can no longer be completed. Reconnect from your AI client to try again.");
           setSubmitting(false);
           return;

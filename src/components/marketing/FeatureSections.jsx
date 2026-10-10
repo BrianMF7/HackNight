@@ -1,6 +1,6 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { Headphones, FileCheck2, BellRing, UserCheck, LayoutPanelLeft } from "lucide-react";
+import { FileCheck2, BellRing, UserCheck, LayoutPanelLeft } from "lucide-react";
 
 const fade = { initial: { opacity: 0, y: 18 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-60px" }, transition: { duration: 0.5 } };
 
