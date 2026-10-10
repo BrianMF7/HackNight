@@ -92,7 +92,7 @@ export const mockWorkspace = {
     if (unconfirmed.length) reasons.push({ code: "REQUIRED_UNCONFIRMED", message: `${unconfirmed.length} required question(s) are not clinician-confirmed.` });
     if (unconfirmed.some((q) => q.safety)) reasons.push({ code: "SAFETY_UNRESOLVED", message: "A required safety item is unresolved." });
     if (!recipientEmail) reasons.push({ code: "NO_RECIPIENT", message: "No therapist recipient is assigned." });
-    if (elapsedSeconds > plannedMinutes * 60) reasons.push({ code: "SEND_GATE_EXPIRED", message: `The ${plannedMinutes}-minute send window for this session has expired.` });
+    if (elapsedSeconds < plannedMinutes * 60) reasons.push({ code: "SEND_GATE_NOT_MET", message: `At least ${plannedMinutes} minutes are required before handoff.` });
     if (reasons.length) return { allowed: false, reasons };
     return { allowed: true, sent: true, to: recipientEmail, demo: true };
   },
