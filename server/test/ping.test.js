@@ -72,6 +72,34 @@ test("a different origin is not echoed", async () => {
   assert.equal(res.headers.get("access-control-allow-origin"), null);
 });
 
+test("comma-separated CORS_ORIGIN allows a second Vite port", async () => {
+  const multi = createServer({
+    token: TOKEN,
+    origin: "http://localhost:5173,http://localhost:5174",
+  });
+  await new Promise((resolve) => multi.listen(0, "127.0.0.1", resolve));
+  try {
+    const other = "http://localhost:5174";
+    const res = await fetch(`http://127.0.0.1:${multi.address().port}/api/ping`, {
+      headers: { Authorization: `Bearer ${TOKEN}`, Origin: other, Accept: "application/json" },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers.get("access-control-allow-origin"), other);
+    const preflight = await fetch(`http://127.0.0.1:${multi.address().port}/api/ping`, {
+      method: "OPTIONS",
+      headers: {
+        Origin: other,
+        "Access-Control-Request-Method": "GET",
+        "Access-Control-Request-Headers": "authorization",
+      },
+    });
+    assert.equal(preflight.status, 204);
+    assert.equal(preflight.headers.get("access-control-allow-origin"), other);
+  } finally {
+    await new Promise((resolve, reject) => multi.close((err) => (err ? reject(err) : resolve())));
+  }
+});
+
 test("an unset server token rejects every bearer", async () => {
   const bare = createServer({ token: "", origin: ORIGIN });
   await new Promise((resolve) => bare.listen(0, "127.0.0.1", resolve));

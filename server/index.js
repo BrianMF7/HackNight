@@ -8,12 +8,19 @@ import { getTemplate, listTemplates } from "./template.js";
 
 const DEFAULT_ORIGIN = "http://localhost:5173";
 
+/** @param {string | string[]} origin */
+export function parseCorsOrigins(origin) {
+  const raw = Array.isArray(origin) ? origin.join(",") : origin || DEFAULT_ORIGIN;
+  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
 export function createServer({
   token = process.env.BACKEND_TOKEN || "",
   origin = process.env.CORS_ORIGIN || DEFAULT_ORIGIN,
   elevenLabsKey = process.env.ELEVENLABS_API_KEY || "",
   fetchImpl = fetch,
 } = {}) {
+  const origins = parseCorsOrigins(origin);
   const routes = {
     "GET /api/ping": (_req, res) => json(res, 200, { ok: true }),
     "GET /api/templates": (_req, res) => json(res, 200, listTemplates()),
@@ -40,8 +47,9 @@ export function createServer({
   return http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
     const requestOrigin = typeof req.headers.origin === "string" ? req.headers.origin : "";
-    if (requestOrigin === origin) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
+    const allowed = origins.includes(requestOrigin);
+    if (allowed) {
+      res.setHeader("Access-Control-Allow-Origin", requestOrigin);
       res.setHeader("Vary", "Origin");
       res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
       res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type, Accept");
@@ -49,7 +57,7 @@ export function createServer({
     res.setHeader("X-Content-Type-Options", "nosniff");
 
     if (req.method === "OPTIONS") {
-      res.writeHead(requestOrigin === origin ? 204 : 403);
+      res.writeHead(allowed ? 204 : 403);
       res.end();
       return;
     }
