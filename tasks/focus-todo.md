@@ -128,14 +128,14 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Define the two questions Yes will open. They are a prior episode and a brief elevated-mood screen. They are not copied into the adult-intake template, and they are not required for handoff.
 
 **Acceptance criteria:**
-- [ ] `depressionAddon` has `DEP-001` and `DEP-002`, both `required: false`, neither marked safety
-- [ ] `addonFor("depression")` returns those questions, and `addonFor` of any other id returns `null`
-- [ ] `server/template.js` and `src/api/templates/adultIntake.js` do not gain `DEP-001` or `DEP-002`
+- [x] `depressionAddon` has `DEP-001` and `DEP-002`, both `required: false`, neither marked safety
+- [x] `addonFor("depression")` returns those questions, and `addonFor` of any other id returns `null`
+- [x] `server/template.js` and `src/api/templates/adultIntake.js` do not gain `DEP-001` or `DEP-002`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-addon.test.js`
-- [ ] Build succeeds: `node --check server/focus/addon.js`
-- [ ] Existing template contract still passes: `node --test server/test/template.test.js`
+- [x] Tests pass: `node --test server/test/focus-addon.test.js`
+- [x] Build succeeds: `node --check server/focus/addon.js`
+- [x] Existing template contract still passes: `node --test server/test/template.test.js`
 
 **Dependencies:** None. Can start with Task 1.
 
@@ -154,13 +154,13 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** A pure function applies the intake person’s decision. Yes attaches the depression add-on. No clears the offer for that state. The function does not fetch, does not read `sessions`, and does not write a diagnosis code.
 
 **Acceptance criteria:**
-- [ ] Yes on `depression` returns `decision: "yes"` and the two add-on questions
-- [ ] No returns `decision: "no"`, `focuses` empty, and `addon: []`, even when the input state had a surfaced depression focus
-- [ ] A repeated Yes or No returns the same outcome; an unknown focus id or any other decision string throws a coded error and does not change the input object
+- [x] Yes on `depression` returns `decision: "yes"` and the two add-on questions
+- [x] No returns `decision: "no"`, `focuses` empty, and `addon: []`, even when the input state had a surfaced depression focus
+- [x] A repeated Yes or No returns the same outcome; an unknown focus id or any other decision string throws a coded error and does not change the input object
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-decision.test.js`
-- [ ] Build succeeds: `node --check server/focus/decision.js`
+- [x] Tests pass: `node --test server/test/focus-decision.test.js`
+- [x] Build succeeds: `node --check server/focus/decision.js`
 
 **Dependencies:** Task 5
 
@@ -174,8 +174,8 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 
 ## Checkpoint: Add-on
 
-- [ ] `node --test server/test/focus-addon.test.js server/test/focus-decision.test.js` passes
-- [ ] Person 2 has not edited `server/index.js`, `server/focus/agent.js`, or `server/focus/score.js`
+- [x] `node --test server/test/focus-addon.test.js server/test/focus-decision.test.js` passes
+- [x] Person 2 has not edited `server/index.js`, `server/focus/agent.js`, or `server/focus/score.js`
 
 ---
 

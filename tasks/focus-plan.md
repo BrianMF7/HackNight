@@ -119,8 +119,8 @@ Tasks 1–4 and Tasks 5–6 have no shared files, so the two people work at the 
 
 ### Phase 2: Person 2, the add-on
 
-- [ ] Task 5: Depression add-on questions
-- [ ] Task 6: Yes and No state
+- [x] Task 5: Depression add-on questions
+- [x] Task 6: Yes and No state
 
 ### Checkpoint: Add-on
 
