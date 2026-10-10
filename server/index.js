@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { handleActions } from "./actions.js";
+import { createSql, pingDatabase } from "./db.js";
 import { handleDisconnect } from "./disconnect.js";
 import { handleHandoff } from "./handoff.js";
 import { handleSession } from "./session.js";
@@ -22,11 +23,30 @@ export function createServer({
   elevenLabsKey = process.env.ELEVENLABS_API_KEY || "",
   fetchImpl = fetch,
   handoffMailer = null,
+  sql = createSql(),
 } = {}) {
   const origins = parseCorsOrigins(origin);
   const routes = {
     "GET /api/ping": (_req, res) => json(res, 200, { ok: true }),
     "GET /api/templates": (_req, res) => json(res, 200, listTemplates()),
+    "GET /api/db/ping": async (_req, res) => {
+      try {
+        const body = await pingDatabase(sql);
+        json(res, 200, body);
+      } catch (err) {
+        if (err.code === "NO_DATABASE") {
+          json(res, 503, {
+            message: "Tiger/Postgres is not configured. Set DATABASE_URL on the server.",
+            code: "NO_DATABASE",
+          });
+          return;
+        }
+        json(res, 502, {
+          message: err.message || "Database ping failed.",
+          code: "DB_UNAVAILABLE",
+        });
+      }
+    },
     "POST /api/stt/token": async (_req, res) => {
       try {
         const out = await createScribeToken({ apiKey: elevenLabsKey, fetchImpl });
