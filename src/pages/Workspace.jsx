@@ -57,6 +57,11 @@ export default function Workspace() {
     }
   };
 
+  const openReview = () => {
+    setReviewOpen(true);
+    session.requestFinalPass();
+  };
+
   const keepDraft = async () => {
     await workspaceApi.retainDraft({ sessionId: info.id });
     setSessionStatus("Incomplete draft retained for review (not sent)");
@@ -75,7 +80,7 @@ export default function Workspace() {
 
   const docPanel = (
     <div className="relative flex h-full min-h-0 flex-col bg-muted/40">
-      <DocumentHeader session={session} focusMode={focusMode} onToggleFocus={() => setFocusMode((f) => !f)} onPreview={() => setReviewOpen(true)} />
+      <DocumentHeader session={session} focusMode={focusMode} onToggleFocus={() => setFocusMode((f) => !f)} onPreview={openReview} />
       <OutstandingQueue outstanding={session.outstanding} snoozed={session.snoozed} onJump={jumpTo} onPlay={play} />
       <NotificationStack
         notifications={session.notifications}
@@ -109,7 +114,7 @@ export default function Workspace() {
                 session={session}
                 sessionInfo={info}
                 patientLabel={info.patientLabel}
-                onEnd={() => setReviewOpen(true)}
+                onEnd={openReview}
                 onSimulateDisconnect={() => session.setConnection("patient_left")}
                 onCommittedTranscript={session.appendTranscriptLine}
               />

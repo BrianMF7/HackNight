@@ -80,7 +80,13 @@ export function createServer({
       }
     }
 
-    const sessionResponse = await handleSession(req.method, url.pathname, body, Date.now(), fetchImpl);
+    let sessionResponse;
+    try {
+      sessionResponse = await handleSession(req.method, url.pathname, body, Date.now(), fetchImpl);
+    } catch {
+      json(res, 500, { message: "Internal error", code: "INTERNAL" });
+      return;
+    }
     if (sessionResponse) {
       json(res, sessionResponse.status, sessionResponse.body);
       return;

@@ -93,8 +93,9 @@ async function runLiveDraft(record, fetchImpl) {
     const drafts = await draftFromTranscript(lines, questions, { synthetic: false, fetch: fetchImpl });
     result = { seq, drafts };
   } catch (err) {
-    if (err.code !== "PHI_REFUSED" && err.code !== "GEMINI_HTTP") throw err;
-    result = { seq, drafts: [], code: err.code };
+    const code = geminiFailure(err);
+    if (!code) throw err;
+    result = { seq, drafts: [], code };
   } finally {
     const waiters = record.draftWaiters.splice(0);
     if (waiters.length) {
@@ -128,9 +129,17 @@ async function finalPass(record, body, fetchImpl) {
     });
     return { status: 200, body: { drafts } };
   } catch (err) {
-    if (err.code !== "PHI_REFUSED" && err.code !== "GEMINI_HTTP") throw err;
-    return { status: 200, body: { drafts: [], code: err.code } };
+    const code = geminiFailure(err);
+    if (!code) throw err;
+    return { status: 200, body: { drafts: [], code } };
   }
+}
+
+function geminiFailure(err) {
+  if (err?.code === "PHI_REFUSED" || err?.code === "GEMINI_HTTP" || err?.code === "BAD_GEMINI" || err?.code === "NO_GEMINI_KEY") {
+    return err.code;
+  }
+  return null;
 }
 
 async function handleDrafts(rawId, body, fetchImpl) {

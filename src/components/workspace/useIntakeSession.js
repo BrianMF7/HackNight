@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { workspaceApi } from "@/api";
 import { allQuestions } from "@/api/templates/adultIntake";
-import { applyLiveDrafts } from "./applyLiveDrafts";
+import { getMode } from "@/api/config";
+import { applyFinalPass, applyLiveDrafts, planFinalPass } from "./applyLiveDrafts";
 
 // Drives one intake session. In demo mode a synthetic transcript plays back and mock backend
 // events arrive over time. The frontend only DISPLAYS backend answers; it never invents them.
@@ -20,9 +21,15 @@ export default function useIntakeSession(session) {
   const firedRef = useRef(new Set());
   const reminderFired = useRef(false);
   const appliedSeqRef = useRef(0);
+  const appliedFinalLinesRef = useRef(null);
+  const answersRef = useRef(answers);
+  const transcriptRef = useRef(transcript);
+  answersRef.current = answers;
+  transcriptRef.current = transcript;
 
   useEffect(() => {
     appliedSeqRef.current = 0;
+    appliedFinalLinesRef.current = null;
     if (!session) return;
     workspaceApi.getEvents({ sessionId: session.id }).then(setEvents);
     workspaceApi.getTranscript({ sessionId: session.id }).then(setTranscript);
@@ -107,9 +114,36 @@ export default function useIntakeSession(session) {
     }
   }, [session?.id]);
 
+  const requestFinalPass = useCallback(async () => {
+    const lineCount = transcriptRef.current.length;
+    const plan = planFinalPass({
+      mode: getMode(),
+      lineCount,
+      lastAppliedLineCount: appliedFinalLinesRef.current,
+      answers: answersRef.current,
+    });
+    if (!plan.call || !session?.id) return;
+    const previous = appliedFinalLinesRef.current;
+    appliedFinalLinesRef.current = lineCount;
+    let response;
+    try {
+      response = await workspaceApi.drafts({ sessionId: session.id, ...plan.body });
+    } catch {
+      if (appliedFinalLinesRef.current === lineCount) appliedFinalLinesRef.current = previous;
+      return;
+    }
+    if (transcriptRef.current.length !== lineCount || !response || response.code) {
+      if (appliedFinalLinesRef.current === lineCount) appliedFinalLinesRef.current = previous;
+      return;
+    }
+    setAnswers((current) => (
+      transcriptRef.current.length === lineCount ? applyFinalPass(current, response) : current
+    ));
+  }, [session?.id]);
+
   return {
     elapsed, playhead, answers, questionState, confirmedIds, outstanding, notifications, snoozed, transcript,
     connection, setConnection, paused, setPaused,
-    dismissNotification, snooze, confirm, saveEdit, appendTranscriptLine,
+    dismissNotification, snooze, confirm, saveEdit, appendTranscriptLine, requestFinalPass,
   };
 }

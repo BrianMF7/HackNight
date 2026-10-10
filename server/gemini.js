@@ -1,6 +1,6 @@
 import { applyDrafts } from "./ground.js";
 
-const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent";
 
 export function buildRequestText(lines, questions) {
   const questionLines = questions.map((question) => `${question.id}: ${question.label}`).join("\n");
@@ -36,15 +36,37 @@ function buildFinalRequestText(lines, questions, drafts) {
   ].join("\n");
 }
 
+const DRAFT_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    drafts: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          fieldId: { type: "STRING" },
+          status: { type: "STRING" },
+          answer: { type: "STRING" },
+          evidence: { type: "STRING" },
+          t: { type: "NUMBER" },
+        },
+        required: ["fieldId", "status", "answer", "evidence", "t"],
+      },
+    },
+  },
+  required: ["drafts"],
+};
+
 function draftsFromBody(body) {
   const parts = body?.candidates?.[0]?.content?.parts ?? [];
-  const text = parts.map((part) => part.text ?? "").join("");
-  const parsed = JSON.parse(text);
-  if (!Array.isArray(parsed?.drafts)) {
-    const err = new Error("Gemini response has no drafts");
-    err.code = "BAD_GEMINI";
-    throw err;
+  const text = parts.filter((part) => !part?.thought).map((part) => part.text ?? "").join("");
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    fail("BAD_GEMINI", "Gemini response has no drafts");
   }
+  if (!Array.isArray(parsed?.drafts)) fail("BAD_GEMINI", "Gemini response has no drafts");
   return parsed.drafts;
 }
 
@@ -58,20 +80,37 @@ async function fetchGemini(text, options) {
   const apiKey = options.apiKey ?? process.env.GEMINI_API_KEY;
   if (!apiKey) fail("NO_GEMINI_KEY", "GEMINI_API_KEY is not set");
   const fetchImpl = options.fetch ?? globalThis.fetch;
-  const res = await fetchImpl(GEMINI_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text }] }],
-      // shortcut: thinkingBudget 1024 on the final pass only; commit stays at 0
-      generationConfig: {
-        responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: options.final ? 1024 : 0 },
-      },
-    }),
-  });
+  const controller = new AbortController();
+  // shortcut: 3.8 Flash sometimes runs past a minute; release the session lock instead of waiting forever
+  const timeout = setTimeout(() => controller.abort(), 120_000);
+  timeout.unref?.();
+  let res;
+  try {
+    res = await fetchImpl(GEMINI_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text }] }],
+        // shortcut: 2.5-flash is 404 for new keys; 3.8 Flash cannot turn thinking off, so commit is low and the final pass is medium
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: DRAFT_SCHEMA,
+          thinkingConfig: { thinkingLevel: options.final ? "medium" : "low" },
+        },
+      }),
+    });
+  } catch {
+    fail("GEMINI_HTTP", "Gemini request failed");
+  } finally {
+    clearTimeout(timeout);
+  }
   if (!res.ok) fail("GEMINI_HTTP", "Gemini request failed");
-  return res.json();
+  try {
+    return await res.json();
+  } catch {
+    fail("BAD_GEMINI", "Gemini response has no drafts");
+  }
 }
 
 export async function draftFromTranscript(lines, questions, options = {}) {
@@ -83,7 +122,6 @@ export async function draftFromTranscript(lines, questions, options = {}) {
     : buildRequestText(lines, questions);
   const body = options.body ?? await fetchGemini(text, options);
   const fieldIds = new Set(questions.map((question) => question.id));
-  const raw = draftsFromBody(body);
-  const drafts = options.final ? raw.filter((draft) => fieldIds.has(draft.fieldId)) : raw;
+  const drafts = draftsFromBody(body).filter((draft) => draft && fieldIds.has(draft.fieldId));
   return applyDrafts(drafts, lines, fieldIds);
 }

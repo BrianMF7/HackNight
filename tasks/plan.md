@@ -22,8 +22,8 @@ This revision replaces the unfinished Next.js plan. Product code starts with `/b
 - **Demo clock shortcut:** with `ALLOW_DEMO_OFFSET=1`, creating the synthetic session may set `startedAt` 45 minutes in the past so a judge can see an allowed send. Unset, the gate uses real elapsed time. `shortcut: demo offset is env-gated and off by default.`
 - **Transcript comes from ElevenLabs Scribe, not TTS.** Live audio is speech-to-text. There is no “play question” speech endpoint. Gemini only sees transcript text, then `ground` keeps or drops drafts. Demo mode keeps the synthetic fixture. A live session does not.
 - **Task 9c uses Task 11’s committed lines. It does not wait for Task 10.** `POST .../transcript-lines` already appends `{ t, speaker, text }`. There is no second normalizer and no full-transcript file. Partials stay on the video overlay. They are not posted and they are not drafted: a partial is not a quote `ground` can keep.
-- **Lowest latency on the path that already exists.** Audio stays browser → ElevenLabs. The Node process never sees PCM. After a commit, one `POST .../transcript-lines` stores the line and returns grounded drafts in that same response. The form paints from that body. No poll, no SSE, no second `POST .../drafts`. At most one Gemini call is in flight per session; a commit that arrives mid-call is stored immediately and one follow-up runs when the current call finishes. The response carries `seq` (how many live lines that draft saw). The client applies a response only when `seq` is at least the last one applied, so a late first response cannot wipe a newer draft. Live `createSession` (`live: true`) starts with an empty transcript, so the fixture ramble is not in the prompt and not on the form. The Gemini call stays `gemini-2.5-flash` with `thinkingBudget: 0` (2.5 Flash thinks dynamically unless this is set) and only questions not already confirmed. `shortcut: vad_silence_threshold_secs=0.4`. The API accepts above 0.3 through 3.0; the default 1.5s is the long pause before a commit. 0.4s can split one sentence across lines; each draft still sees every live line, and `ground` already allows `...` between quote parts.
-- **One final Gemini pass, off the commit path.** When the clinician opens review, `POST .../drafts` with `{ pass: "final" }` sends the server’s full live transcript, the questions that are not confirmed, and the current non-confirmed drafts as context. One `gemini-2.5-flash` `generateContent` call. No tool loop and no second model. `shortcut: thinkingBudget=1024` on this call only; the commit call stays at 0. The model may fill a blank or replace a draft. A field it omits stays as it was. `ground` still drops invented quotes. Confirmed answers are left out of the prompt and dropped if the model returns them. An empty transcript returns `drafts: []` and does not call Gemini. `POST .../drafts` without `pass: "final"` stays the synthetic recorded-body path.
+- **Lowest latency on the path that already exists.** Audio stays browser → ElevenLabs. The Node process never sees PCM. After a commit, one `POST .../transcript-lines` stores the line and returns grounded drafts in that same response. The form paints from that body. No poll, no SSE, no second `POST .../drafts`. At most one Gemini call is in flight per session; a commit that arrives mid-call is stored immediately and one follow-up runs when the current call finishes. The response carries `seq` (how many live lines that draft saw). The client applies a response only when `seq` is at least the last one applied, so a late first response cannot wipe a newer draft. Live `createSession` (`live: true`) starts with an empty transcript, so the fixture ramble is not in the prompt and not on the form. The Gemini call stays `gemini-3.8-flash` with `thinkingLevel: "low"` (`gemini-2.5-flash` returns 404 for new API keys, and 3.8 Flash cannot disable thinking) and only questions not already confirmed. `shortcut: vad_silence_threshold_secs=0.4`. The API accepts above 0.3 through 3.0; the default 1.5s is the long pause before a commit. 0.4s can split one sentence across lines; each draft still sees every live line, and `ground` already allows `...` between quote parts.
+- **One final Gemini pass, off the commit path.** When the clinician opens review, `POST .../drafts` with `{ pass: "final" }` sends the server’s full live transcript, the questions that are not confirmed, and the current non-confirmed drafts as context. One `gemini-3.8-flash` `generateContent` call. No tool loop and no second model. `shortcut: thinkingLevel=medium` on this call only; the commit call stays at `low`. The model may fill a blank or replace a draft. A field it omits stays as it was. `ground` still drops invented quotes. Confirmed answers are left out of the prompt and dropped if the model returns them. An empty transcript returns `drafts: []` and does not call Gemini. `POST .../drafts` without `pass: "final"` stays the synthetic recorded-body path.
 - **No diagnosis codes.** Gemini prompts must not ask for a diagnosis code. Real (non-synthetic) transcript bodies need `ALLOW_PHI=1`.
 
 ```mermaid
@@ -170,7 +170,7 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 - [x] Task 9c-3: Commit response includes grounded drafts
 - [x] Task 9c-4: Form paints those drafts immediately
 - [x] Task 9c-5: Final Gemini pass over the full transcript
-- [ ] Task 9c-6: Review applies that pass without clearing omissions
+- [x] Task 9c-6: Review applies that pass without clearing omissions
 
 ### Checkpoint: After Tasks 9c-1 and 9c-2
 
@@ -187,9 +187,9 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 
 ### Checkpoint: After Tasks 9c-5 and 9c-6
 
-- [ ] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no `pass` and no network
-- [ ] A final pass fills a blank and replaces a draft; an omitted field and a confirmed field stay as they were
-- [ ] Opening review does not call Gemini again when no new line was committed
+- [x] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no `pass` and no network
+- [x] A final pass fills a blank and replaces a draft; an omitted field and a confirmed field stay as they were
+- [x] Opening review does not call Gemini again when no new line was committed
 - [ ] Human approval before a live microphone with `ALLOW_PHI=1`
 
 ### Later, not this slice
@@ -218,7 +218,7 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 | Late Gemini response overwrites a newer draft | Med | `seq` on the response; client applies only `seq` ≥ last applied |
 | Fixture ramble mixed into a live prompt | High | `live: true` starts with an empty transcript. Non-live create is unchanged. |
 | Final pass wipes a good draft or a confirm | High | Omitted fields stay. Confirmed ids never enter the prompt and are dropped from the result. The pass does not run inside `transcript-lines`. |
-| Final pass thinks for a long time | Med | `thinkingBudget` 1024 on that call only. Review opens with the drafts already on the form. |
+| Final pass thinks for a long time | Med | `thinkingLevel` medium on that call only. Review opens with the drafts already on the form. |
 | No PSY scan in the repo | Med | pdf-lib document of the confirmed packet; UI template is 4 pages |
 | Dashboard says PDFKit | Low | Server uses `pdf-lib`; label can stay |
 | Demo needs a send without waiting | Med | `ALLOW_DEMO_OFFSET=1` only; off by default |

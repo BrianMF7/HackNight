@@ -183,6 +183,7 @@ function groundedBody(quote) {
     candidates: [{
       content: {
         parts: [{
+          thoughtSignature: "sig",
           text: JSON.stringify({
             drafts: [{
               fieldId: "AIQ-001",
@@ -241,7 +242,7 @@ async function withPhi(allow, fn) {
   }
 }
 
-test("a live append returns a grounded draft from one fetch with thinkingBudget 0", async () => {
+test("a live append returns a grounded draft from one fetch with thinkingLevel low", async () => {
   let calls = 0;
   let sent;
   const live = await listen(async (url, init) => {
@@ -270,9 +271,9 @@ test("a live append returns a grounded draft from one fetch with thinkingBudget 
       assert.equal(body.drafts[0].fieldId, "AIQ-001");
       assert.equal(body.drafts[0].evidence.includes(LIVE_QUOTE), true);
       assert.equal(calls, 1);
-      assert.match(String(sent.url), /gemini-2\.5-flash:generateContent/);
+      assert.match(String(sent.url), /gemini-3\.8-flash:generateContent/);
       const request = JSON.parse(sent.init.body);
-      assert.equal(request.generationConfig.thinkingConfig.thinkingBudget, 0);
+      assert.equal(request.generationConfig.thinkingConfig.thinkingLevel, "low");
       const prompt = request.contents[0].parts[0].text;
       assert.equal(prompt.includes(LIVE_QUOTE), true);
       assert.equal(prompt.includes("AIQ-002"), false);
@@ -446,7 +447,7 @@ async function storeTwoLines(url, id) {
   return [line1, line2];
 }
 
-test("a final pass grounds the injected body with thinkingBudget 1024 and both lines", async () => {
+test("a final pass grounds the injected body with thinkingLevel medium and both lines", async () => {
   const sent = [];
   const live = await listen(async (url, init) => {
     sent.push({ url, init });
@@ -478,10 +479,10 @@ test("a final pass grounds the injected body with thinkingBudget 1024 and both l
       assert.equal(body.drafts[0].fieldId, "AIQ-001");
       assert.equal(body.drafts[0].evidence.includes(LIVE_QUOTE), true);
       assert.equal(sent.length, 1);
-      assert.match(String(sent[0].url), /gemini-2\.5-flash:generateContent/);
+      assert.match(String(sent[0].url), /gemini-3\.8-flash:generateContent/);
       const request = JSON.parse(sent[0].init.body);
       assert.equal(request.tools, undefined);
-      assert.equal(request.generationConfig.thinkingConfig.thinkingBudget, 1024);
+      assert.equal(request.generationConfig.thinkingConfig.thinkingLevel, "medium");
       const prompt = request.contents[0].parts[0].text;
       assert.equal(prompt.includes(LIVE_QUOTE), true);
       assert.equal(prompt.includes(LINE_TWO), true);
@@ -499,7 +500,7 @@ test("a final pass grounds the injected body with thinkingBudget 1024 and both l
       assert.equal(extra.status, 200);
       assert.equal(sent.length, 2);
       const commit = JSON.parse(sent[1].init.body);
-      assert.equal(commit.generationConfig.thinkingConfig.thinkingBudget, 0);
+      assert.equal(commit.generationConfig.thinkingConfig.thinkingLevel, "low");
     });
   } finally {
     await live.close();
@@ -559,6 +560,113 @@ test("an empty final pass does not fetch, and a non-live drafts post stays recor
     assert.equal(events.length, 1);
     assert.equal(events[0].fieldId, "AIQ-001");
     assert.equal(calls, 0);
+  } finally {
+    await live.close();
+  }
+});
+
+test("a live Gemini call asks for a drafts object schema and keeps the key out of the URL", async () => {
+  const sent = [];
+  const live = await listen(async (url, init) => {
+    sent.push({ url, init });
+    return { ok: true, json: async () => groundedBody(LIVE_QUOTE) };
+  });
+  try {
+    const id = await createSession(live.base, true);
+    await withPhi(false, async () => {
+      await storeTwoLines(live.base, id);
+    });
+    assert.equal(sent.length, 0);
+    await withPhi(true, async () => {
+      const res = await postDrafts(live.base, id, { pass: "final", drafts: [] });
+      assert.equal(res.status, 200);
+    });
+    assert.equal(sent.length, 1);
+    const request = JSON.parse(sent[0].init.body);
+    assert.equal(String(sent[0].url).includes("test-key"), false);
+    assert.equal(request.generationConfig.responseMimeType, "application/json");
+    assert.equal(request.generationConfig.thinkingConfig.thinkingLevel, "medium");
+    assert.equal(request.generationConfig.responseSchema.type, "OBJECT");
+    assert.equal(request.generationConfig.responseSchema.required.includes("drafts"), true);
+    assert.equal(request.generationConfig.responseSchema.properties.drafts.type, "ARRAY");
+  } finally {
+    await live.close();
+  }
+});
+
+test("a non-JSON Gemini body and a missing key return empty drafts instead of failing the request", async () => {
+  const live = await listen(async () => ({
+    ok: true,
+    json: async () => ({ candidates: [{ content: { parts: [{ text: "not json" }] } }] }),
+  }));
+  try {
+    const id = await createSession(live.base, true);
+    await withPhi(false, async () => {
+      await storeTwoLines(live.base, id);
+    });
+    await withPhi(true, async () => {
+      const res = await postDrafts(live.base, id, { pass: "final", drafts: [] });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.deepEqual(body.drafts, []);
+      assert.equal(body.code, "BAD_GEMINI");
+    });
+    const previousKey = process.env.GEMINI_API_KEY;
+    const previousPhi = process.env.ALLOW_PHI;
+    delete process.env.GEMINI_API_KEY;
+    process.env.ALLOW_PHI = "1";
+    try {
+      const res = await postDrafts(live.base, id, { pass: "final", drafts: [] });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.deepEqual(body.drafts, []);
+      assert.equal(body.code, "NO_GEMINI_KEY");
+    } finally {
+      if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
+      else process.env.GEMINI_API_KEY = previousKey;
+      if (previousPhi === undefined) delete process.env.ALLOW_PHI;
+      else process.env.ALLOW_PHI = previousPhi;
+    }
+    const ping = await fetch(`${live.base}/api/ping`, { headers: authHeaders() });
+    assert.equal(ping.status, 200);
+  } finally {
+    await live.close();
+  }
+});
+
+test("an unknown field id in a live Gemini body does not drop the grounded draft", async () => {
+  const live = await listen(async () => ({
+    ok: true,
+    json: async () => ({
+      candidates: [{
+        content: {
+          parts: [{
+            text: JSON.stringify({
+              drafts: [
+                { fieldId: "NO-SUCH", status: "draft", answer: "nope", evidence: `"${LIVE_QUOTE}"`, t: 6 },
+                {
+                  fieldId: "AIQ-001",
+                  status: "draft",
+                  answer: "Overwhelmed and anxious",
+                  evidence: `"${LIVE_QUOTE}"`,
+                  t: 6,
+                },
+              ],
+            }),
+          }],
+        },
+      }],
+    }),
+  }));
+  try {
+    const id = await createSession(live.base, true);
+    await withPhi(true, async () => {
+      const res = await appendLine(live.base, id, { t: 6, speaker: "Patient", text: LIVE_QUOTE });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.drafts.length, 1);
+      assert.equal(body.drafts[0].fieldId, "AIQ-001");
+    });
   } finally {
     await live.close();
   }

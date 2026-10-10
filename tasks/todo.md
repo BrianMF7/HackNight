@@ -355,10 +355,10 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Task 9c-3: Commit response includes grounded drafts
 
-**Description:** On a live session, `POST .../transcript-lines` stores the line first, then runs the existing `draftFromTranscript` and `ground` path and returns `{ t, speaker, text, seq, drafts }`. `seq` is the count of live lines included in that draft. At most one Gemini call runs at a time; a commit that arrives mid-call is stored immediately, and exactly one follow-up runs after the current call, on the full live transcript. The prompt lists only questions not already confirmed in `record.answers`, plus every live line, and it still must not ask for a diagnosis code. The generate call sets `generationConfig.thinkingConfig.thinkingBudget` to 0 and keeps `gemini-2.5-flash`. `synthetic: false`. If `ALLOW_PHI` is unset, or the Gemini fetch fails, the line stays stored, `drafts` is `[]`, and the body includes `code` (`PHI_REFUSED` or `GEMINI_HTTP`). No retry loop. Non-live `POST .../drafts` still uses the recorded fixture body and does not call Gemini. Tests inject fetch the same way `createServer({ fetchImpl })` injects the ElevenLabs fetch.
+**Description:** On a live session, `POST .../transcript-lines` stores the line first, then runs the existing `draftFromTranscript` and `ground` path and returns `{ t, speaker, text, seq, drafts }`. `seq` is the count of live lines included in that draft. At most one Gemini call runs at a time; a commit that arrives mid-call is stored immediately, and exactly one follow-up runs after the current call, on the full live transcript. The prompt lists only questions not already confirmed in `record.answers`, plus every live line, and it still must not ask for a diagnosis code. The generate call sets `generationConfig.thinkingConfig.thinkingLevel` to `low` and uses `gemini-3.8-flash`. `synthetic: false`. If `ALLOW_PHI` is unset, or the Gemini fetch fails, the line stays stored, `drafts` is `[]`, and the body includes `code` (`PHI_REFUSED` or `GEMINI_HTTP`). No retry loop. Non-live `POST .../drafts` still uses the recorded fixture body and does not call Gemini. Tests inject fetch the same way `createServer({ fetchImpl })` injects the ElevenLabs fetch.
 
 **Acceptance criteria:**
-- [x] A live append whose quote is in that line returns a grounded draft in the same response; the injected fetch is called once, the request JSON has `thinkingBudget: 0`, and the prompt text has no diagnosis-code instruction and no confirmed field id
+- [x] A live append whose quote is in that line returns a grounded draft in the same response; the injected fetch is called once, the request JSON has `thinkingLevel` `low`, and the prompt text has no diagnosis-code instruction and no confirmed field id
 - [x] A second append that starts while the first fetch is pending does not start a second fetch until the first settles, then starts exactly one fetch whose transcript includes both lines; each response’s `seq` matches the line count that draft saw
 - [x] With `ALLOW_PHI` unset, or when the injected fetch fails, the line is still on GET transcript, `drafts` is `[]`, and a failed fetch is not retried. Non-live `POST .../drafts` still returns the recorded AIQ-001 draft and does not call fetch
 
@@ -414,10 +414,10 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Task 9c-5: Final Gemini pass over the full transcript
 
-**Description:** When review asks for it, `POST /api/sessions/:sessionId/drafts` with `{ pass: "final", drafts }` runs one `gemini-2.5-flash` `generateContent` on the live session’s stored transcript. The prompt includes every live line, every question that is not confirmed in `record.answers`, and the posted drafts as context only. It tells the model to fill a blank or replace a draft when the full transcript supports a quote, and to omit a question when nothing should change. `generationConfig.thinkingConfig.thinkingBudget` is 1024 on this call. The commit path stays at 0. No tool loop and no second model. Output goes through `ground`. Confirmed field ids are removed before the prompt and dropped from the result. An empty transcript returns `{ drafts: [] }` and does not fetch. `synthetic: false`, so `ALLOW_PHI` is required; if it is unset or the fetch fails, return `{ drafts: [], code }` and do not retry. `POST .../drafts` without `pass: "final"` is unchanged: recorded fixture body, no network. This route is not called from `transcript-lines`.
+**Description:** When review asks for it, `POST /api/sessions/:sessionId/drafts` with `{ pass: "final", drafts }` runs one `gemini-3.8-flash` `generateContent` on the live session’s stored transcript. The prompt includes every live line, every question that is not confirmed in `record.answers`, and the posted drafts as context only. It tells the model to fill a blank or replace a draft when the full transcript supports a quote, and to omit a question when nothing should change. `generationConfig.thinkingConfig.thinkingLevel` is `medium` on this call. The commit path stays at `low`. No tool loop and no second model. Output goes through `ground`. Confirmed field ids are removed before the prompt and dropped from the result. An empty transcript returns `{ drafts: [] }` and does not fetch. `synthetic: false`, so `ALLOW_PHI` is required; if it is unset or the fetch fails, return `{ drafts: [], code }` and do not retry. `POST .../drafts` without `pass: "final"` is unchanged: recorded fixture body, no network. This route is not called from `transcript-lines`.
 
 **Acceptance criteria:**
-- [x] A live session with two stored lines and `{ pass: "final" }` returns grounded drafts from the injected body. The prompt contains both lines and the posted draft text, excludes a confirmed field id, and has no diagnosis-code instruction. The request JSON has `thinkingBudget` 1024.
+- [x] A live session with two stored lines and `{ pass: "final" }` returns grounded drafts from the injected body. The prompt contains both lines and the posted draft text, excludes a confirmed field id, and has no diagnosis-code instruction. The request JSON has `thinkingLevel` `medium`.
 - [x] An invented quote in that body is absent from the result, and a confirmed field id in the model output is absent too
 - [x] An empty live transcript returns `{ drafts: [] }` and does not fetch. `POST .../drafts` without `pass: "final"` on a non-live session still returns the recorded AIQ-001 draft and does not fetch
 
@@ -444,13 +444,13 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** Opening review in live mode (End Call or Preview) calls the final pass with the current non-confirmed drafts. The dialog opens immediately with the answers already on the form. When the response arrives, replace a non-confirmed field that the response includes, and fill a field that was empty. A field the response omits stays as it was. A confirmed field stays confirmed. If the transcript line count is unchanged since the last applied final pass, do not call again. Demo mode does not call. A refusal or failed fetch leaves the form as it was.
 
 **Acceptance criteria:**
-- [ ] Opening review in live mode calls `{ pass: "final" }` once, replaces a non-confirmed draft the response includes, and fills a field that was empty
-- [ ] A field the response omits stays, and a confirmed field stays confirmed
-- [ ] Reopening review with no new committed line does not call again. Demo mode does not call
+- [x] Opening review in live mode calls `{ pass: "final" }` once, replaces a non-confirmed draft the response includes, and fills a field that was empty
+- [x] A field the response omits stays, and a confirmed field stays confirmed
+- [x] Reopening review with no new committed line does not call again. Demo mode does not call
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js` (server contract from 9c-5; this task does not add a component harness)
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `node --test server/test/gemini.test.js` (server contract from 9c-5; this task does not add a component harness)
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: in live mode, speak two answers, end the call, and see a missed field fill or an earlier draft change inside the open review. Confirm a field, reopen review, and see that field unchanged
 
 **Dependencies:** Tasks 9c-4, 9c-5
@@ -466,9 +466,9 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Checkpoint: After Tasks 9c-5 and 9c-6
 
-- [ ] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no `pass` and no network
-- [ ] A final pass fills a blank and replaces a draft; an omitted field and a confirmed field stay as they were
-- [ ] Opening review does not call Gemini again when no new line was committed
+- [x] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no `pass` and no network
+- [x] A final pass fills a blank and replaces a draft; an omitted field and a confirmed field stay as they were
+- [x] Opening review does not call Gemini again when no new line was committed
 - [ ] Human approves before a live microphone with `ALLOW_PHI=1`
 
 ---
