@@ -3,29 +3,5 @@ import { Link } from "react-router-dom";
 import Logo from "@/components/brand/Logo";
 
 export default function SiteFooter() {
-  return (
-    <footer className="bg-foreground py-12 text-white/80">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 md:grid-cols-4">
-        <div className="md:col-span-2">
-          <Logo light />
-          <p className="mt-3 max-w-sm text-sm text-white/60">AI-assisted clinical intake documentation. The clinician always reviews and approves.</p>
-        </div>
-        <div className="text-sm">
-          <p className="mb-2 font-medium text-white">Product</p>
-          <ul className="space-y-1.5 text-white/60">
-            <li><a href="#how">How it works</a></li><li><a href="#zoom">Zoom Companion</a></li><li><a href="#demo">Demo</a></li>
-          </ul>
-        </div>
-        <div className="text-sm">
-          <p className="mb-2 font-medium text-white">Organization</p>
-          <ul className="space-y-1.5 text-white/60">
-            <li><Link to="/login">Sign in</Link></li><li><a href="#contact">Request access</a></li>
-          </ul>
-        </div>
-      </div>
-      <p className="mx-auto mt-10 max-w-6xl border-t border-white/10 px-4 pt-6 text-xs text-white/50">
-        Hackathon demonstration using synthetic data only. Not a HIPAA-compliant production deployment. Not a diagnostic tool; clinicians remain responsible for all clinical judgment.
-      </p>
-    </footer>
-  );
+  return <footer className="border-t border-border bg-foreground py-12 text-white/80"><div className="mx-auto grid max-w-7xl gap-10 px-5 sm:px-8 md:grid-cols-[1.5fr_1fr_1fr]"><div><Logo light /><p className="mt-5 max-w-sm text-sm leading-7 text-white/75">Conversation-first intake documentation. Human judgment remains central.</p></div><div><h2 className="text-sm font-semibold text-white">Explore</h2><nav aria-label="Footer sections" className="mt-4 flex flex-col gap-3 text-sm"><a className="hover:text-white" href="#platform">Platform</a><a className="hover:text-white" href="#how">How it works</a><a className="hover:text-white" href="#responsible-ai">Responsible AI</a><a className="hover:text-white" href="#documentation">Documentation</a></nav></div><div><h2 className="text-sm font-semibold text-white">Access</h2><nav aria-label="Footer account links" className="mt-4 flex flex-col gap-3 text-sm"><Link className="hover:text-white" to="/login">Sign in</Link></nav></div></div><div className="mx-auto mt-12 max-w-7xl border-t border-white/20 px-5 pt-6 sm:px-8"><p className="max-w-5xl text-xs leading-6 text-white/70">Evaluation prototype using synthetic information only. Not authorized or validated for clinical deployment or real patient data. MindScribe does not diagnose, independently assess clinical risk, or replace professional judgment.</p></div></footer>;
 }

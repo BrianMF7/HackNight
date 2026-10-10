@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -35,9 +35,9 @@
     --chart-4: 193.33 36% 65%;
     --chart-5: 206.67 15.93% 44.31%;
     --radius: 0.5rem;
-    --font-heading: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-body: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
-    --font-display: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-heading: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-body: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 208.5 41.67% 18.82%;
@@ -95,4 +95,15 @@
   body {
     @apply bg-background text-foreground font-body;
   }
+}
+/* Hybrid Clinical Editorial landing-page display type. Scoped to marketing only. */
+@layer utilities {
+  .ms-display {
+    font-family: 'Source Serif 4', Georgia, serif;
+    font-weight: 500;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within { scroll-behavior: auto; }
 }

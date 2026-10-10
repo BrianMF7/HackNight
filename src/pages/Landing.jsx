@@ -7,14 +7,5 @@ import DemoAndContact from "@/components/marketing/DemoAndContact";
 import SiteFooter from "@/components/marketing/SiteFooter";
 
 export default function Landing() {
-  return (
-    <div className="scroll-smooth bg-background">
-      <SiteNav />
-      <Hero />
-      <FeatureSections />
-      <ZoomSection />
-      <DemoAndContact />
-      <SiteFooter />
-    </div>
-  );
+  return <div className="scroll-smooth bg-background text-foreground"><SiteNav/><main id="main-content"><Hero/><FeatureSections/><ZoomSection/><DemoAndContact/></main><SiteFooter/></div>;
 }
