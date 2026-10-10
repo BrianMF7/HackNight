@@ -1,13 +1,8 @@
 import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
-import {
-  appendTranscriptLine,
-  createSession,
-  getEvents,
-  getSession,
-  getTranscript,
-} from "./session.js";
+import { handleActions } from "./actions.js";
+import { handleSession } from "./session.js";
 import { createScribeToken } from "./stt.js";
 import { getTemplate, listTemplates } from "./template.js";
 
@@ -40,13 +35,9 @@ export function createServer({
         });
       }
     },
-    "POST /api/sessions": async (req, res) => {
-      const body = await readJson(req);
-      json(res, 200, createSession(body || {}));
-    },
   };
 
-  return http.createServer((req, res) => {
+  return http.createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://127.0.0.1");
     const requestOrigin = typeof req.headers.origin === "string" ? req.headers.origin : "";
     if (requestOrigin === origin) {
@@ -71,11 +62,35 @@ export function createServer({
       return;
     }
 
+    let body;
+    if (req.method === "POST") {
+      try {
+        body = await readJson(req);
+      } catch {
+        json(res, 400, { message: "Invalid JSON", code: "BAD_REQUEST" });
+        return;
+      }
+    }
+
+    const sessionResponse = await handleSession(req.method, url.pathname, body, Date.now());
+    if (sessionResponse) {
+      json(res, sessionResponse.status, sessionResponse.body);
+      return;
+    }
+
+    const actionResponse = handleActions(req.method, url.pathname, body, Date.now());
+    if (actionResponse) {
+      json(res, actionResponse.status, actionResponse.body);
+      return;
+    }
+
     const route = routes[`${req.method} ${url.pathname}`];
     if (route) {
-      Promise.resolve(route(req, res)).catch(() => {
+      try {
+        await route(req, res);
+      } catch {
         json(res, 500, { message: "Internal error", code: "INTERNAL" });
-      });
+      }
       return;
     }
 
@@ -95,50 +110,6 @@ export function createServer({
       return;
     }
 
-    const sessionMatch = url.pathname.match(/^\/api\/sessions\/([^/]+)(?:\/(transcript|events|transcript-lines))?$/);
-    if (sessionMatch) {
-      const sessionId = decodeURIComponent(sessionMatch[1]);
-      const sub = sessionMatch[2];
-      const session = getSession(sessionId);
-      if (!session) {
-        json(res, 404, { message: "Not found", code: "NOT_FOUND" });
-        return;
-      }
-      if (req.method === "GET" && sub === "transcript") {
-        json(res, 200, getTranscript(sessionId));
-        return;
-      }
-      if (req.method === "GET" && sub === "events") {
-        json(res, 200, getEvents(sessionId));
-        return;
-      }
-      if (req.method === "POST" && sub === "transcript-lines") {
-        Promise.resolve(readJson(req))
-          .then((body) => {
-            try {
-              json(res, 200, appendTranscriptLine(sessionId, body || {}));
-            } catch (err) {
-              json(res, 400, { message: err.message, code: err.code || "BAD_REQUEST" });
-            }
-          })
-          .catch(() => json(res, 400, { message: "Invalid JSON", code: "BAD_REQUEST" }));
-        return;
-      }
-      if (req.method === "GET" && !sub) {
-        json(res, 200, {
-          id: session.id,
-          patientLabel: session.patientLabel,
-          therapist: session.therapist,
-          clinician: session.clinician,
-          templateId: session.templateId,
-          plannedMinutes: session.plannedMinutes,
-          startedAt: session.startedAt,
-          status: session.status,
-        });
-        return;
-      }
-    }
-
     json(res, 404, { message: "Not found", code: "NOT_FOUND" });
   });
 }
@@ -152,16 +123,29 @@ function authorized(header, token) {
   return timingSafeEqual(a, b);
 }
 
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on("data", (chunk) => chunks.push(chunk));
+    req.on("end", () => {
+      const raw = Buffer.concat(chunks).toString("utf8");
+      if (!raw) {
+        resolve({});
+        return;
+      }
+      try {
+        resolve(JSON.parse(raw));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
 function json(res, status, body) {
   res.writeHead(status, { "Content-Type": "application/json" });
   res.end(JSON.stringify(body));
-}
-
-async function readJson(req) {
-  const chunks = [];
-  for await (const chunk of req) chunks.push(chunk);
-  if (!chunks.length) return {};
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

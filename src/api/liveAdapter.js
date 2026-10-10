@@ -5,11 +5,28 @@ import ApiError from "./ApiError";
 import { endpoints } from "./endpoints";
 import { getBackendUrl, getBackendToken } from "./config";
 
-const fill = (path, params = {}) =>
-  path.replace(/:(\w+)/g, (_, k) => encodeURIComponent(params[k] ?? ""));
+/**
+ * @typedef {{ method: string, path: string } | null} Endpoint
+ * @typedef {Record<string, string | undefined>} Params
+ * @typedef {Record<string, string>} Query
+ * @typedef {{ params?: Params, body?: unknown, query?: Query, raw?: boolean }} RequestOptions
+ * @typedef {Record<string, string | undefined>} AdapterCall
+ * @typedef {{ message?: string, error?: string, code?: string, fieldErrors?: Record<string, string>, errors?: Record<string, string> }} ErrorBody
+ */
 
+/**
+ * @param {string} path
+ * @param {Params} [params]
+ */
+const fill = (path, params = {}) =>
+  path.replace(/:(\w+)/g, (/** @type {string} */ _match, /** @type {string} */ key) => encodeURIComponent(params[key] ?? ""));
+
+/**
+ * @param {string} name
+ * @param {RequestOptions} [options]
+ */
 async function request(name, { params, body, query, raw } = {}) {
-  const ep = endpoints[name];
+  const ep = /** @type {Record<string, Endpoint>} */ (endpoints)[name];
   if (!ep) {
     throw new ApiError(`The "${name}" endpoint is not configured yet.`, { code: "NOT_CONFIGURED" });
   }
@@ -18,6 +35,7 @@ async function request(name, { params, body, query, raw } = {}) {
     throw new ApiError("No backend URL set. Add it in Connection settings.", { code: "NO_BASE_URL" });
   }
   const qs = query ? `?${new URLSearchParams(query)}` : "";
+  /** @type {Record<string, string>} */
   const headers = { Accept: raw ? "*/*" : "application/json" };
   const token = getBackendToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -35,6 +53,7 @@ async function request(name, { params, body, query, raw } = {}) {
   }
 
   if (!res.ok) {
+    /** @type {ErrorBody} */
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON error body */ }
     const fallback = {
@@ -58,11 +77,11 @@ async function request(name, { params, body, query, raw } = {}) {
 export const liveAdapter = {
   ping: () => request("ping"),
   listPatients: () => request("listPatients"),
-  createPatient: (payload) => request("createPatient", { body: payload }),
+  createPatient: (/** @type {AdapterCall} */ payload) => request("createPatient", { body: payload }),
   listSessions: () => request("listSessions"),
-  createSession: (payload) => request("createSession", { body: payload }),
+  createSession: (/** @type {AdapterCall} */ payload) => request("createSession", { body: payload }),
   listReports: () => request("listReports"),
-  generateReport: ({ sessionId }) => request("generateReport", { params: { sessionId }, body: { sessionId } }),
-  downloadReport: ({ reportId }) => request("downloadReport", { params: { reportId }, raw: true }),
-  emailReport: ({ reportId, to }) => request("emailReport", { params: { reportId }, body: { to } }),
+  generateReport: (/** @type {AdapterCall} */ { sessionId }) => request("generateReport", { params: { sessionId }, body: { sessionId } }),
+  downloadReport: (/** @type {AdapterCall} */ { reportId }) => request("downloadReport", { params: { reportId }, raw: true }),
+  emailReport: (/** @type {AdapterCall} */ { reportId, to }) => request("emailReport", { params: { reportId }, body: { to } }),
 };

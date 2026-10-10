@@ -52,6 +52,8 @@ export const mockWorkspace = {
 
   async appendTranscriptLine() { await delay(50); return { ok: true, demo: true }; },
 
+  async drafts() { await delay(100); return events; },
+
   async getTranscript() { await delay(100); return transcript; },
   async getEvents() { await delay(100); return events; },
 

@@ -26,6 +26,7 @@ const WORKSPACE_METHODS = [
   "getEvents",
   "appendTranscriptLine",
   "getSttToken",
+  "drafts",
   "recordClinicianAction",
   "retainDraft",
   "discardDraft",

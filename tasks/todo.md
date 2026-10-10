@@ -4,7 +4,7 @@ Requirements: `tasks/plan.md`. Vite UI stays. Node server under `server/` owns c
 
 Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Check: `node --check` on touched `.js` files · UI build: `npm run build`
 
-Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs via `fetch`. Synthetic fixtures only.
+Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
 ---
 
@@ -64,14 +64,14 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `POST /api/sessions` plus transcript and events from `src/api/fixtures/syntheticSession.js`. `ground` accepts a draft only when every quote is a substring of the transcript. Unknown field ids and invented quotes throw. Silence does not become “no”. Wire createSession, getTranscript, and getEvents in the live adapter.
 
 **Acceptance criteria:**
-- [ ] The fixture events pass `ground`
-- [ ] An invented quote fills nothing
-- [ ] `load` rejects paths outside the synthetic fixture dir
+- [x] The fixture events pass `ground`
+- [x] An invented quote fills nothing
+- [x] `load` rejects paths outside the synthetic fixture dir
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/session.test.js server/test/ground.test.js`
-- [ ] Build succeeds: `node --check server/session.js && node --check server/ground.js`
-- [ ] Manual check: live mode creates a session and events match the fixture
+- [x] Tests pass: `node --test server/test/session.test.js server/test/ground.test.js`
+- [x] Build succeeds: `node --check server/session.js && node --check server/ground.js`
+- [x] Manual check: live mode creates a session and events match the fixture
 
 **Dependencies:** Task 2
 
@@ -86,8 +86,8 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ## Checkpoint: After Tasks 1–3
 
-- [ ] `node --test` passes
-- [ ] Live mode can ping, load the template, and create a session whose events match the fixture
+- [x] `node --test` passes
+- [x] Live mode can ping, load the template, and create a session whose events match the fixture
 - [ ] Review with human before proceeding
 
 ---
@@ -121,13 +121,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `recordClinicianAction` stores `confirm` and `edit_confirm` as confirmed, and `edit` as draft so confirmation clears. `waive` on a safety id is rejected. Server state, not the request’s id list, is what later send will read.
 
 **Acceptance criteria:**
-- [ ] An edit after confirm clears confirmed
-- [ ] A safety waive does not count as confirmed
-- [ ] Actions persist on the in-memory session
+- [x] An edit after confirm clears confirmed
+- [x] A safety waive does not count as confirmed
+- [x] Actions persist on the in-memory session
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/actions.test.js`
-- [ ] Build succeeds: `node --check server/actions.js`
+- [x] Tests pass: `node --test server/test/actions.test.js`
+- [x] Build succeeds: `node --check server/actions.js`
 
 **Dependencies:** Task 3
 
@@ -234,19 +234,26 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
-## Task 9: Gemini drafts
+## Phase 4a: Gemini without Task 11
 
-**Description:** Ask Gemini for draft events from transcript lines and the question list, then `ground` them. Tests use a recorded response. The request must not ask for a diagnosis code. Refuse a body marked `synthetic: false` unless `ALLOW_PHI=1`.
+Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scribe, no mic, no Task 10.
+
+---
+
+## Task 9a: Gemini module + fixture + ground
+
+**Description:** Pure server module: given transcript lines, the adult-intake question list, and a Gemini JSON body (injected or fetched), produce draft events and run them through `applyDrafts` / `ground`. Tests never hit the network; they load `server/fixtures/gemini-ramble-response.json`. Build the request text so it never instructs a diagnosis code. If the call options mark `synthetic: false` and `ALLOW_PHI` is unset, refuse before any fetch.
 
 **Acceptance criteria:**
-- [ ] A recorded response with real quotes becomes grounded drafts
-- [ ] An invented quote is rejected and nothing is filled
-- [ ] The request body has no instruction to put a diagnosis code on the form
+- [x] Recorded response whose quotes appear in the synthetic transcript becomes grounded drafts
+- [x] An invented quote in the recorded response fills nothing (dropped by `ground`)
+- [x] The built request / prompt string has no instruction to put a diagnosis code on the form
+- [x] `synthetic: false` without `ALLOW_PHI=1` throws or returns a refusal; no Gemini call
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js`
-- [ ] Build succeeds: `node --check server/gemini.js`
-- [ ] Manual check: with `GEMINI_API_KEY`, one synthetic ramble only
+- [x] Tests pass: `node --test server/test/gemini.test.js`
+- [x] Build succeeds: `node --check server/gemini.js`
+- [ ] Manual check (optional): with `GEMINI_API_KEY`, one synthetic transcript only
 
 **Dependencies:** Task 3
 
@@ -260,33 +267,80 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
-## Task 10: Zoom transcript file
+## Task 9b: POST drafts on the synthetic session
 
-**Description:** Convert a saved Zoom timeline JSON into the same `{ speaker, text, startMs }` lines. No network call and no Zoom app package.
+**Description:** `POST /api/sessions/:sessionId/drafts` loads that session’s stored transcript (Task 3 fixture), runs Task 9a, and returns grounded events. Wire the path in `liveWorkspace` (`drafts` / equivalent). Default body is synthetic. Missing session is 404. Does not start Scribe or accept audio.
 
 **Acceptance criteria:**
-- [ ] A fixture timeline becomes ordered lines that pass `ground`
-- [ ] An empty timeline becomes no lines
-- [ ] Those lines pass through Task 3 `ground`
+- [x] After createSession, POST drafts returns grounded events whose quotes match the session transcript
+- [x] Unknown sessionId is 404
+- [x] Live adapter exposes the drafts route (no longer null)
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/zoom.test.js`
-- [ ] Build succeeds: `node --check server/zoom.js`
+- [x] Tests pass: `node --test server/test/gemini.test.js` (route cases included or a focused drafts test)
+- [x] Build succeeds: `node --check server/index.js && node --check server/gemini.js`
+- [x] Manual check: bearer createSession → POST drafts → events look like grounded drafts
 
-**Dependencies:** Task 3
+**Dependencies:** Task 9a
 
 **Files likely touched:**
-- `server/zoom.js`
-- `server/fixtures/zoom-resource.json`
-- `server/test/zoom.test.js`
+- `server/gemini.js`, `server/session.js`, `server/index.js`
+- `src/api/liveWorkspace.js`
+- `server/test/gemini.test.js`
+
+**Estimated scope:** Small: 1–2 files (plus test)
+
+---
+
+## Task 9c: Drafts from Scribe lines (deferred)
+
+**Description:** Same Gemini + ground path as 9a/9b, but transcript lines come from Task 10’s normalized full Scribe transcript (fed by Task 11 chunks). No new grounding rules. Skip until STT works.
+
+**Acceptance criteria:**
+- [ ] Drafts run against Scribe-normalized lines and still pass `ground`
+- [ ] Synthetic fixture path from 9b still works
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/gemini.test.js`
+- [ ] Manual check: only after Task 11 human approval for live audio
+
+**Dependencies:** Tasks 9b, 10, 11
+
+**Files likely touched:**
+- `server/gemini.js`, `server/session.js`
+- `server/test/gemini.test.js`
+
+**Estimated scope:** Small: 1–2 files
+
+---
+
+## Task 10: Full Scribe transcript lines
+
+**Description:** Normalize the full ElevenLabs Scribe transcript into the same `{ t, speaker, text }` lines Task 3 already uses. Tests use a recorded Scribe payload (no live network). An empty transcript becomes no lines. Those lines must pass `ground` when quoted. Replaces the old Zoom timeline import. Not required for Tasks 9a–9b.
+
+**Acceptance criteria:**
+- [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
+- [ ] An empty Scribe payload becomes no lines
+- [ ] Quotes from those lines pass through Task 3 `ground`
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/scribe-transcript.test.js`
+- [ ] Build succeeds: `node --check server/scribeTranscript.js`
+
+**Dependencies:** Tasks 3, 11
+
+**Files likely touched:**
+- `server/scribeTranscript.js`
+- `server/fixtures/scribe-full-transcript.json`
+- `server/test/scribe-transcript.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 11: ElevenLabs realtime speech-to-text
+## Task 11: ElevenLabs Scribe real-time STT
 
-**Description:** Live mic audio is transcribed with ElevenLabs Scribe realtime. The server mints a single-use token (`realtime_scribe`); the browser opens the STT WebSocket with that token so `ELEVENLABS_API_KEY` never reaches the client. Committed lines use the workspace shape `{ t, speaker, text }`.
+**Description:** Live mic audio is transcribed with ElevenLabs Scribe realtime. The server mints a single-use token (`realtime_scribe`); the browser opens the STT WebSocket with that token so `ELEVENLABS_API_KEY` never reaches the client. Committed lines use the workspace shape `{ t, speaker, text }` via `POST .../transcript-lines`. No text-to-speech and no “play question” route. Not required for Tasks 9a–9b.
 
 **Setup:**
 - [x] Create an ElevenLabs API key at https://elevenlabs.io/app/settings/api-keys
@@ -298,7 +352,7 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Contract:**
 - `POST /api/stt/token` (bearer) → `{ token, wsUrl }` via `POST https://api.elevenlabs.io/v1/single-use-token/realtime_scribe`
 - Browser: `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&token=...&commit_strategy=vad`
-- Live workspace mic streams PCM; committed text appends to transcript (+ `POST .../transcript-lines`)
+- Live workspace mic streams PCM; committed text appends via `POST .../transcript-lines`
 - Connection settings: “Test realtime speech-to-text” in live mode
 
 **Acceptance criteria:**
@@ -306,13 +360,14 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 - [x] WebSocket URL is speech-to-text realtime, not text-to-speech
 - [x] Missing API key does not call the network
 - [x] Bearer required on `/api/stt/token`
+- [x] `playQuestion` stays unset in the live adapter
 
 **Verification:**
 - [x] Tests pass: `npm run test:stt`
 - [x] Build succeeds: `node --check server/stt.js`
 - [ ] Manual check: live mode + mic on, hear speech become transcript lines
 
-**Dependencies:** Task 2. Thin live `POST /api/sessions` stub included so the workspace can open in live mode.
+**Dependencies:** Task 3
 
 **Files likely touched:**
 - `server/stt.js`, `server/session.js`, `server/index.js`
@@ -351,9 +406,19 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
+## Checkpoint: After Tasks 9a–9b
+
+- [x] `node --test server/test/gemini.test.js` passes
+- [x] Invented quotes fill nothing; prompt has no diagnosis-code instruction
+- [x] createSession → POST drafts works on the synthetic transcript
+- [ ] Review with human before Task 9c / live Scribe
+
+---
+
 ## Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic path: playback events, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Optional live path: Scribe lines → same drafts endpoint
 - [ ] Tiger row when `DATABASE_URL` is set
-- [ ] Human approves before live audio, camera, or a real inbox
+- [ ] Human approves before a live microphone, real Scribe session, or a real inbox

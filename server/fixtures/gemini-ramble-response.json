@@ -1,0 +1,15 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "text": "{\"drafts\":[{\"fieldId\":\"AIQ-001\",\"status\":\"draft\",\"answer\":\"Feeling overwhelmed and anxious; difficulty functioning.\",\"evidence\":\"\\\"I've been feeling really overwhelmed and anxious, and it's getting hard to function.\\\"\",\"t\":6},{\"fieldId\":\"SUB-001\",\"status\":\"draft\",\"answer\":\"Daily chest pain and no sleep.\",\"evidence\":\"\\\"I have chest pain and I never sleep.\\\"\",\"t\":1}]}"
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ]
+}

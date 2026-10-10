@@ -4,7 +4,16 @@
 import ApiError from "./ApiError.js";
 import { getBackendUrl, getBackendToken } from "./config.js";
 
-// TODO: fill from the backend team's documented contract.
+/**
+ * @typedef {{ method: string, path: string } | null} Endpoint
+ * @typedef {Record<string, string | undefined>} Params
+ * @typedef {{ params?: Params, body?: unknown }} RequestOptions
+ * @typedef {Record<string, string | undefined>} WorkspaceCall
+ * @typedef {{ message?: string, error?: string, code?: string }} ErrorBody
+ */
+
+// Unset routes stay null until the task that implements that handler.
+/** @type {Record<string, Endpoint>} */
 export const workspaceEndpoints = {
   getTemplates: { method: "GET", path: "/api/templates" },
   getTemplate: { method: "GET", path: "/api/templates/:templateId" },
@@ -13,20 +22,31 @@ export const workspaceEndpoints = {
   getEvents: { method: "GET", path: "/api/sessions/:sessionId/events" },
   appendTranscriptLine: { method: "POST", path: "/api/sessions/:sessionId/transcript-lines" },
   getSttToken: { method: "POST", path: "/api/stt/token" },
-  recordClinicianAction: null,
+  drafts: { method: "POST", path: "/api/sessions/:sessionId/drafts" },
+  recordClinicianAction: { method: "POST", path: "/api/sessions/:sessionId/actions" },
   retainDraft: null,
   discardDraft: null,
   requestHandoff: null,
   playQuestion: null,
 };
 
-const fill = (path, params = {}) => path.replace(/:(\w+)/g, (_, k) => encodeURIComponent(params[k] ?? ""));
+/**
+ * @param {string} path
+ * @param {Params} [params]
+ */
+const fill = (path, params = {}) =>
+  path.replace(/:(\w+)/g, (/** @type {string} */ _match, /** @type {string} */ key) => encodeURIComponent(params[key] ?? ""));
 
+/**
+ * @param {string} name
+ * @param {RequestOptions} [options]
+ */
 async function request(name, { params, body } = {}) {
   const ep = workspaceEndpoints[name];
   if (!ep) throw new ApiError(`The "${name}" endpoint is not configured yet.`, { code: "NOT_CONFIGURED" });
   const base = getBackendUrl();
   if (!base) throw new ApiError("No backend URL set. Add it in Connection settings.", { code: "NO_BASE_URL" });
+  /** @type {Record<string, string>} */
   const headers = { Accept: "application/json" };
   const token = getBackendToken();
   if (token) headers.Authorization = `Bearer ${token}`;
@@ -38,6 +58,7 @@ async function request(name, { params, body } = {}) {
     throw new ApiError("Cannot reach the backend. Check the URL, your network, or CORS settings.", { code: "NETWORK" });
   }
   if (!res.ok) {
+    /** @type {ErrorBody} */
     let data = {};
     try { data = await res.json(); } catch { /* non-JSON */ }
     throw new ApiError(data.message || data.error || `Request failed (${res.status}).`, { status: res.status, code: data.code || "HTTP_ERROR" });
@@ -47,16 +68,17 @@ async function request(name, { params, body } = {}) {
 
 export const liveWorkspace = {
   getTemplates: () => request("getTemplates"),
-  getTemplate: ({ templateId }) => request("getTemplate", { params: { templateId } }),
-  createSession: (p) => request("createSession", { body: p }),
-  getTranscript: ({ sessionId }) => request("getTranscript", { params: { sessionId } }),
-  getEvents: ({ sessionId }) => request("getEvents", { params: { sessionId } }),
-  appendTranscriptLine: ({ sessionId, t, speaker, text }) =>
+  getTemplate: (/** @type {WorkspaceCall} */ { templateId }) => request("getTemplate", { params: { templateId } }),
+  createSession: (/** @type {WorkspaceCall} */ payload) => request("createSession", { body: payload }),
+  getTranscript: (/** @type {WorkspaceCall} */ { sessionId }) => request("getTranscript", { params: { sessionId } }),
+  getEvents: (/** @type {WorkspaceCall} */ { sessionId }) => request("getEvents", { params: { sessionId } }),
+  appendTranscriptLine: (/** @type {WorkspaceCall & { t?: number, speaker?: string, text?: string }} */ { sessionId, t, speaker, text }) =>
     request("appendTranscriptLine", { params: { sessionId }, body: { t, speaker, text } }),
   getSttToken: () => request("getSttToken"),
-  recordClinicianAction: (p) => request("recordClinicianAction", { params: { sessionId: p.sessionId }, body: p }),
-  retainDraft: ({ sessionId }) => request("retainDraft", { params: { sessionId } }),
-  discardDraft: ({ sessionId }) => request("discardDraft", { params: { sessionId } }),
-  requestHandoff: (p) => request("requestHandoff", { params: { sessionId: p.sessionId }, body: p }),
-  playQuestion: ({ sessionId, fieldId }) => request("playQuestion", { params: { sessionId }, body: { fieldId } }),
+  drafts: (/** @type {WorkspaceCall} */ payload) => request("drafts", { params: { sessionId: payload.sessionId }, body: payload }),
+  recordClinicianAction: (/** @type {WorkspaceCall} */ payload) => request("recordClinicianAction", { params: { sessionId: payload.sessionId }, body: payload }),
+  retainDraft: (/** @type {WorkspaceCall} */ { sessionId }) => request("retainDraft", { params: { sessionId } }),
+  discardDraft: (/** @type {WorkspaceCall} */ { sessionId }) => request("discardDraft", { params: { sessionId } }),
+  requestHandoff: (/** @type {WorkspaceCall} */ payload) => request("requestHandoff", { params: { sessionId: payload.sessionId }, body: payload }),
+  playQuestion: (/** @type {WorkspaceCall} */ { sessionId, fieldId }) => request("playQuestion", { params: { sessionId }, body: { fieldId } }),
 };
