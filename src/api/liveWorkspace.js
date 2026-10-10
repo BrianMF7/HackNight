@@ -20,7 +20,7 @@ export const workspaceEndpoints = {
   createSession: { method: "POST", path: "/api/sessions" },
   getTranscript: { method: "GET", path: "/api/sessions/:sessionId/transcript" },
   getEvents: { method: "GET", path: "/api/sessions/:sessionId/events" },
-  recordClinicianAction: null,
+  recordClinicianAction: { method: "POST", path: "/api/sessions/:sessionId/actions" },
   retainDraft: null,
   discardDraft: null,
   requestHandoff: null,

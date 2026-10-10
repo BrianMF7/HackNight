@@ -42,6 +42,8 @@ export function load(relativePath) {
   return readFileSync(real, "utf8");
 }
 
+export const getSession = (id) => sessions.get(id);
+
 function notFound() {
   return { status: 404, body: { message: "Not found", code: "NOT_FOUND" } };
 }
@@ -75,6 +77,7 @@ export function handleSession(method, pathname, body, now) {
       startedAt: now,
       transcript,
       events: servedEvents,
+      answers: {},
     };
     sessions.set(record.id, record);
     return { status: 200, body: publicSession(record) };

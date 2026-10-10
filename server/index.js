@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
+import { handleActions } from "./actions.js";
 import { handleSession } from "./session.js";
 import { getTemplate, listTemplates } from "./template.js";
 
@@ -53,6 +54,12 @@ export function createServer({
     const sessionResponse = handleSession(req.method, url.pathname, body, Date.now());
     if (sessionResponse) {
       json(res, sessionResponse.status, sessionResponse.body);
+      return;
+    }
+
+    const actionResponse = handleActions(req.method, url.pathname, body, Date.now());
+    if (actionResponse) {
+      json(res, actionResponse.status, actionResponse.body);
       return;
     }
 
