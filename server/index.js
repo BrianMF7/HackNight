@@ -116,7 +116,7 @@ export function createServer({
       return;
     }
 
-    const handoffResponse = await handleHandoff(req.method, url.pathname, body, Date.now(), { mailer: handoffMailer });
+    const handoffResponse = await handleHandoff(req.method, url.pathname, body, Date.now(), { mailer: handoffMailer, sql });
     if (handoffResponse) {
       json(res, handoffResponse.status, handoffResponse.body);
       return;

@@ -42,7 +42,7 @@ test('a draft, an empty confirmed answer, and a safety draft block handoff', () 
 
 test('HTTP handoff ignores forged client time and confirmations; authorized send is once', async () => {
   const mailer = createFakeMailer();
-  const server = createServer({ token: 'synthetic-test', handoffMailer: mailer });
+  const server = createServer({ token: 'synthetic-test', handoffMailer: mailer, sql: null });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   const post = (route, body) => fetch(url + route, { method: 'POST', headers: { Authorization: 'Bearer synthetic-test', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -86,6 +86,7 @@ test('live adapter posts handoff on the session route', () => {
     method: 'POST',
     path: '/api/sessions/:sessionId/handoff',
   });
+  assert.equal(workspaceEndpoints.playQuestion, null);
 });
 
 test('review success names the recipient and limits the demo disclaimer to demo mode', async () => {

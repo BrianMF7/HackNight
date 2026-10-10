@@ -3,6 +3,7 @@ import { getTemplate } from './template.js';
 import { clockStatus } from './clock.js';
 import { renderIntakePdf } from './pdf.js';
 import { sendPacketOnce } from './send.js';
+import { nudgeIds, storeSentPacket } from './store.js';
 
 /** Server-owned checks. Never use request-body elapsedSeconds or confirmedIds. */
 export function handoffReasons(record, now) {
@@ -12,17 +13,18 @@ export function handoffReasons(record, now) {
   const confirmed = q => record.answers?.[q.id]?.status === 'confirmed' &&
     typeof record.answers[q.id].answer === 'string' && record.answers[q.id].answer.trim().length > 0;
   const reasons = [];
-  const missingRequired = questions.filter(q => q.required && !confirmed(q));
+  const minutes = record.plannedMinutes ?? 45;
+  const unconfirmedRequired = questions.filter((q) => q.required && !confirmed(q));
   if (clockStatus(record.startedAt, now) !== 'met') {
-    reasons.push({ code: 'SEND_GATE_NOT_MET', message: 'At least 45 minutes are required before handoff.' });
+    reasons.push({ code: 'SEND_GATE_NOT_MET', message: `At least ${minutes} minutes are required before handoff.` });
   }
-  if (missingRequired.length) {
+  if (unconfirmedRequired.length) {
     reasons.push({
       code: 'REQUIRED_UNCONFIRMED',
-      message: `${missingRequired.length} required question(s) are not clinician-confirmed.`,
+      message: `${unconfirmedRequired.length} required question(s) are not clinician-confirmed.`,
     });
   }
-  if (questions.some(q => q.safety && !confirmed(q))) {
+  if (questions.some((q) => q.safety && !confirmed(q))) {
     reasons.push({ code: 'SAFETY_UNRESOLVED', message: 'A required safety item is unresolved.' });
   }
   if (typeof record.therapist?.email !== 'string' ||
@@ -33,7 +35,7 @@ export function handoffReasons(record, now) {
 }
 
 /** Explicit clinician POST is the only delivery request; no preview route sends mail. */
-export async function handleHandoff(method, pathname, _body, now, { mailer } = {}) {
+export async function handleHandoff(method, pathname, _body, now, { mailer, sql } = {}) {
   const match = method === 'POST' && /^\/api\/sessions\/([^/]+)\/handoff$/.exec(pathname);
   if (!match) return null;
   const record = findSession(match[1]);
@@ -45,6 +47,15 @@ export async function handleHandoff(method, pathname, _body, now, { mailer } = {
   try {
     const pdfBytes = await renderIntakePdf(record);
     const result = await sendPacketOnce({ sessionId: record.id, to: record.therapist.email, pdfBytes, mailer });
+    if (result.sent) {
+      await storeSentPacket(sql, {
+        caseId: record.id,
+        therapist: record.therapist.email,
+        pdfBytes,
+        sentAt: new Date(now),
+        nudgeIds: nudgeIds(record),
+      });
+    }
     return { status: 200, body: { allowed: true, sent: result.sent, duplicate: result.duplicate, to: record.therapist.email } };
   } catch {
     return { status: 502, body: { allowed: false, sent: false, code: 'HANDOFF_FAILED' } };

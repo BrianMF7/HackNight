@@ -6,7 +6,7 @@ Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Chec
 
 Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
-**Current slice:** Tasks 7b and 8b are done. Tasks 1–9c and 11 are in the tree. Task 10 and Task 12 are **out of scope** and stay unchecked. Nothing in scope depends on them. `GET /api/db/ping` exists; `server/store.js` does not. Review-dialog click-through is blocked by Base44 login.
+**Current slice:** Tasks 1–12 are in the tree. Live `requestHandoff` posts to `/api/sessions/:sessionId/handoff`, refusal reasons are `{ code, message }`, and a successful send includes `to`. Task 12 has one synthetic row on Tiger `hacknight-dev`. Task 11’s mic check still needs a person at the microphone.
 
 ---
 
@@ -199,7 +199,7 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Files present:**
 - `server/handoff.js`, `server/clock.js`, wired from `server/index.js`
 - `server/test/handoff-gate.test.js`
-- `src/api/liveWorkspace.js` (`requestHandoff` wired in Task 8b)
+- `src/api/liveWorkspace.js` (`requestHandoff` wired in Task 8b; `playQuestion` stays null)
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -299,7 +299,7 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 - [x] `node --test server/test/handoff-gate.test.js` passes
 - [x] `npm run test:server` and `npm run build` pass (`node --test`: 95 passed)
 - [x] Review alert can print each refusal message (server returns `message`; `BlockedHandoffAlert` prints it). Dialog not opened in the browser.
-- [ ] Human review before Task 10 or Task 12 (both stay deferred)
+- [x] Tasks 10 and 12 are in the tree (Scribe normalizer and Tiger store)
 
 ---
 
@@ -541,22 +541,22 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ---
 
-## Task 10: Full Scribe transcript file — OUT OF SCOPE
+## Task 10: Full Scribe transcript file
 
-**Status:** Deferred. Do not implement. No in-scope task depends on this. Task 9c uses Task 11’s committed lines.
+**Status:** In the tree. Not on the live path. Task 9c uses Task 11’s committed lines.
 
 **Description:** Normalize a recorded full ElevenLabs Scribe transcript into `{ t, speaker, text }` lines. Not required for Tasks 9a, 9b, or 9c. Task 11’s committed lines are already that shape. Leave this until a transcript file is actually an input.
 
-**Status in tree:** Not present. No `server/scribeTranscript.js`, fixture, or test. Brian’s branch added Tiger ping, not this file.
+**Status in tree:** `server/scribeTranscript.js` normalizes a recorded Scribe `words` list. It is not wired to a route.
 
 **Acceptance criteria:**
-- [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
-- [ ] An empty Scribe payload becomes no lines
-- [ ] Quotes from those lines pass through Task 3 `ground`
+- [x] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
+- [x] An empty Scribe payload becomes no lines
+- [x] Quotes from those lines pass through Task 3 `ground`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/scribe-transcript.test.js`
-- [ ] Build succeeds: `node --check server/scribeTranscript.js`
+- [x] Tests pass: `node --test server/test/scribe-transcript.test.js`
+- [x] Build succeeds: `node --check server/scribeTranscript.js`
 
 **Dependencies:** Task 3. Not Tasks 9c-1–9c-6.
 
@@ -612,30 +612,28 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ---
 
-## Task 12: Tiger stores the sent packet — OUT OF SCOPE
-
-**Status:** Deferred. Do not implement. This task depends on Tasks 7 and 8. Nothing in scope depends on it. The demo checkpoint’s Tiger row stays blocked here.
+## Task 12: Tiger stores the sent packet
 
 **Description:** After Task 8 succeeds, insert one session row (case id, therapist, PDF bytes, `sent_at`) and nudge rows. No raw audio and no full transcript. A refused handoff writes nothing. Missing `DATABASE_URL` skips the insert.
 
 **Already in tree (connectivity only, not this task):** `server/db.js`, `GET /api/db/ping`, `server/test/db.test.js`, `postgres` in `package.json`, `DATABASE_URL` in `.env.example`. Missing `DATABASE_URL` → 503 `NO_DATABASE`.
 
 **Acceptance criteria:**
-- [ ] A successful send writes one row whose PDF bytes match the mailed file, plus nudge rows
-- [ ] A refused send writes nothing
-- [ ] Bound parameters do not include raw audio or the full transcript
+- [x] A successful send writes one row whose PDF bytes match the mailed file, plus nudge rows
+- [x] A refused send writes nothing
+- [x] Bound parameters do not include raw audio or the full transcript
 
 **Verification:**
 - [x] DB ping tests pass: `node --test server/test/db.test.js` (connectivity only)
-- [ ] Tests pass: `node --test server/test/store.test.js`
-- [ ] Build succeeds: `node --check server/store.js`
-- [ ] Manual check: with Tiger `DATABASE_URL`, one synthetic send is visible
+- [x] Tests pass: `node --test server/test/store.test.js`
+- [x] Build succeeds: `node --check server/store.js`
+- [x] Manual check: with Tiger `DATABASE_URL`, one synthetic send is visible (`hacknight-dev`, case `2d6ec7df-376b-452a-8a82-ff483b377abe`, 4302 PDF bytes, nudge `AIQ-005`)
 
 **Dependencies:** Tasks 7, 8 (and live handoff glue if the demo path must go through the UI)
 
 **Files present / still needed:**
-- Present: `server/db.js`, `server/test/db.test.js`, `package.json` (`postgres`), `.env.example`
-- Needed: `server/store.js`, `server/test/store.test.js`, handoff hook after a successful send
+- Present: `server/db.js`, `server/store.js`, `server/test/db.test.js`, `server/test/store.test.js`, `package.json` (`postgres`), `.env.example`
+- Handoff calls `storeSentPacket` only after `sent: true`. Live adapter `requestHandoff` is wired.
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -657,5 +655,5 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 - [x] `node --test` passes after install (95 tests)
 - [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Live handoff works end-to-end. Task 10 is not required.
-- [ ] Tiger row when `DATABASE_URL` is set — **blocked by Task 12 (out of scope)**; ping alone is not this row
+- [ ] Tiger row when `DATABASE_URL` is set (ping alone is not enough)
 - [ ] Human approves before a live microphone, real Scribe session, or a real inbox

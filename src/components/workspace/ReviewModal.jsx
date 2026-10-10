@@ -73,8 +73,11 @@ export default function ReviewModal({ open, onClose, session, sessionInfo, sessi
           {sent ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
               <CheckCircle2 className="h-12 w-12 text-primary" />
-              <h3 className="text-xl font-semibold">{sent.demo ? "Handoff complete (demo)" : "Handoff complete"}</h3>
-              <p className="max-w-md text-sm text-muted-foreground">The confirmed PDF was sent to {sent.to}.{sent.demo ? " In demo mode no email or PDF is actually generated." : ""}</p>
+              <h3 className="text-xl font-semibold">Handoff complete{sent.demo ? " (demo)" : ""}</h3>
+              <p className="max-w-md text-sm text-muted-foreground">
+                The confirmed PDF was sent to {sent.to || sessionInfo.therapist?.email || "the assigned therapist"}.
+                {sent.demo ? " In demo mode no email or PDF is actually generated." : ""}
+              </p>
               <Button onClick={onClose}>Close</Button>
             </div>
           ) : (
