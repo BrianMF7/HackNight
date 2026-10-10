@@ -198,30 +198,32 @@ test("unknown session is 404, a bad decision is 400, and a missing bearer is 401
   }
 });
 
-test("PHI off, a failed fetch, and an empty transcript do not call the model again or drop stored lines", async () => {
+test("ALLOW_PHI unset refuses focus before fetch and leaves the session in place", async () => {
   const previousPhi = process.env.ALLOW_PHI;
   const previousKey = process.env.GEMINI_API_KEY;
   delete process.env.ALLOW_PHI;
   process.env.GEMINI_API_KEY = "test-key";
   const live = await listen();
   try {
-    const refusedId = await liveSession(live.base, live.headers, positive.lines);
-    const refused = await fetch(`${live.base}/api/sessions/${refusedId}/focus`, { method: "POST", headers: live.headers, body: "{}" });
-    const refusedBody = await refused.json();
-    assert.deepEqual(refusedBody.focuses, []);
-    assert.equal(refusedBody.code, "PHI_REFUSED");
+    const id = await liveSession(live.base, live.headers, positive.lines);
+    const res = await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" });
+    const body = await res.json();
+    assert.deepEqual(body.focuses, []);
+    assert.equal(body.code, "PHI_REFUSED");
     assert.equal(live.calls.length, 0);
-
-    const emptyId = await liveSession(live.base, live.headers, []);
-    const empty = await fetch(`${live.base}/api/sessions/${emptyId}/focus`, { method: "POST", headers: live.headers, body: "{}" });
-    assert.deepEqual((await empty.json()).focuses, []);
-    assert.equal(live.calls.length, 0);
+    const stored = await fetch(`${live.base}/api/sessions/${id}/transcript`, { headers: live.headers });
+    assert.equal(stored.status, 200);
+    assert.deepEqual(await stored.json(), positive.lines);
   } finally {
     await live.close();
     restore("ALLOW_PHI", previousPhi);
     restore("GEMINI_API_KEY", previousKey);
   }
+});
 
+test("a failed focus fetch returns GEMINI_HTTP once and keeps the stored lines", async () => {
+  const previousPhi = process.env.ALLOW_PHI;
+  const previousKey = process.env.GEMINI_API_KEY;
   process.env.ALLOW_PHI = "1";
   process.env.GEMINI_API_KEY = "test-key";
   const failing = await listen(async () => ({ ok: false, json: async () => ({}) }));
@@ -241,40 +243,95 @@ test("PHI off, a failed fetch, and an empty transcript do not call the model aga
   }
 });
 
-test("yes does not add handoff requirements and a committed line does not call the focus agent", async () => {
+test("an empty live transcript returns no focus and does not fetch", async () => {
   const previousPhi = process.env.ALLOW_PHI;
   const previousKey = process.env.GEMINI_API_KEY;
   process.env.ALLOW_PHI = "1";
   process.env.GEMINI_API_KEY = "test-key";
-  const prompts = [];
-  const live = await listen(async (_url, init) => {
-    prompts.push(JSON.parse(init.body).contents[0].parts[0].text);
-    return { ok: true, json: async () => positive.body };
-  });
+  const live = await listen();
+  try {
+    const id = await liveSession(live.base, live.headers, []);
+    const res = await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" });
+    assert.deepEqual((await res.json()).focuses, []);
+    assert.equal(live.calls.length, 0);
+  } finally {
+    await live.close();
+    restore("ALLOW_PHI", previousPhi);
+    restore("GEMINI_API_KEY", previousKey);
+  }
+});
+
+test("yes does not add handoff requirements and the PDF module stays free of the add-on", async () => {
+  const previousPhi = process.env.ALLOW_PHI;
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.ALLOW_PHI = "1";
+  process.env.GEMINI_API_KEY = "test-key";
+  const live = await listen();
   try {
     const id = await liveSession(live.base, live.headers, positive.lines);
     const record = findSession(id);
-    const before = handoffReasons(record, Date.now());
     await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" });
     await fetch(`${live.base}/api/sessions/${id}/focus/decision`, {
       method: "POST",
       headers: live.headers,
       body: JSON.stringify({ focusId: "depression", decision: "yes" }),
     });
-    assert.deepEqual(handoffReasons(record, Date.now()), before);
+    const reasons = handoffReasons(record, Date.now());
+    const codes = reasons.map((reason) => reason.code);
+    assert.deepEqual(codes, ["SEND_GATE_NOT_MET", "REQUIRED_UNCONFIRMED", "SAFETY_UNRESOLVED"]);
+    assert.equal(JSON.stringify(reasons).includes("DEP-"), false);
     const pdf = readFileSync(new URL("../pdf.js", import.meta.url), "utf8");
     assert.equal(pdf.includes("No diagnosis code has been assigned by this document."), true);
     assert.equal(pdf.includes("DEP-001"), false);
+    assert.equal(pdf.includes("DEP-002"), false);
+  } finally {
+    await live.close();
+    restore("ALLOW_PHI", previousPhi);
+    restore("GEMINI_API_KEY", previousKey);
+  }
+});
 
-    delete process.env.ALLOW_PHI;
+test("a committed line returns form drafts and does not call the focus agent", async () => {
+  const previousPhi = process.env.ALLOW_PHI;
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.ALLOW_PHI = "1";
+  process.env.GEMINI_API_KEY = "test-key";
+  const quote = "I've been feeling really overwhelmed and anxious, and it's getting hard to function.";
+  const formBody = {
+    candidates: [{
+      content: {
+        parts: [{
+          text: JSON.stringify({
+            drafts: [{ fieldId: "AIQ-001", status: "draft", answer: "Overwhelmed and anxious", evidence: `"${quote}"`, t: 6 }],
+          }),
+        }],
+      },
+    }],
+  };
+  const prompts = [];
+  const live = await listen(async (_url, init) => {
+    prompts.push(JSON.parse(init.body).contents[0].parts[0].text);
+    return { ok: true, json: async () => formBody };
+  });
+  try {
+    const id = await liveSession(live.base, live.headers, []);
     const line = await fetch(`${live.base}/api/sessions/${id}/transcript-lines`, {
       method: "POST",
       headers: live.headers,
-      body: JSON.stringify({ t: 120, speaker: "Patient", text: "I still feel low." }),
+      body: JSON.stringify({ t: 6, speaker: "Patient", text: quote }),
     });
     const drafted = await line.json();
-    assert.ok(Array.isArray(drafted.drafts));
-    assert.equal(prompts.filter((text) => text.includes("Find quoted evidence")).length, 1);
+    assert.equal(drafted.drafts.length, 1);
+    assert.equal(drafted.drafts[0].fieldId, "AIQ-001");
+    assert.equal(drafted.drafts[0].evidence.includes(quote), true);
+    assert.equal(prompts.some((text) => text.includes("Find quoted evidence")), false);
+    assert.equal(prompts.some((text) => text.includes("criterionId")), false);
+    const sessionSource = readFileSync(new URL("../session.js", import.meta.url), "utf8");
+    const geminiSource = readFileSync(new URL("../gemini.js", import.meta.url), "utf8");
+    assert.equal(sessionSource.includes("suggestBindings"), false);
+    assert.equal(sessionSource.includes("focus/agent"), false);
+    assert.equal(geminiSource.includes("suggestBindings"), false);
+    assert.equal(geminiSource.includes("focus/agent"), false);
   } finally {
     await live.close();
     restore("ALLOW_PHI", previousPhi);
