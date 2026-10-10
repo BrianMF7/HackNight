@@ -12,7 +12,7 @@ const PLAYBACK_SPEED = 2; // demo playback runs faster than real time
 /**
  * @typedef {import("./applyLiveDrafts").FieldState} FieldState
  * @typedef {import("./applyLiveDrafts").AnswerMap} AnswerMap
- * @typedef {FieldState & { at: number, fieldId: string }} PlaybackEvent
+ * @typedef {import("./applyLiveDrafts").PlaybackEvent} PlaybackEvent
  * @typedef {{ t: number, speaker: string, text: string }} TranscriptLine
  * @typedef {{
  *   key: string,

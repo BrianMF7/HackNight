@@ -12,6 +12,7 @@
  *   prompt?: boolean,
  *   action?: string,
  * }} FieldState
+ * @typedef {FieldState & { at: number, fieldId: string }} PlaybackEvent
  * @typedef {{
  *   fieldId: string,
  *   status: AnswerStatus,

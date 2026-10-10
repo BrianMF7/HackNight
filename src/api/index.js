@@ -6,7 +6,7 @@ import { liveAdapter } from "./liveAdapter";
 import { mockWorkspace } from "./mockWorkspace";
 import { liveWorkspace } from "./liveWorkspace";
 
-const METHODS = [
+const METHODS = /** @type {const} */ ([
   "ping",
   "listPatients",
   "createPatient",
@@ -16,9 +16,9 @@ const METHODS = [
   "generateReport",
   "downloadReport",
   "emailReport",
-];
+]);
 
-const WORKSPACE_METHODS = [
+const WORKSPACE_METHODS = /** @type {const} */ ([
   "getTemplates",
   "getTemplate",
   "createSession",
@@ -32,16 +32,47 @@ const WORKSPACE_METHODS = [
   "discardDraft",
   "requestHandoff",
   "playQuestion",
-];
+]);
+
+/** @typedef {typeof METHODS[number]} ApiMethod */
+/** @typedef {typeof WORKSPACE_METHODS[number]} WorkspaceMethod */
+
+/**
+ * @typedef {{ [M in ApiMethod]: (...args: Parameters<(typeof mockAdapter)[M]>) => ReturnType<(typeof mockAdapter)[M]> }} ApiClient
+ * @typedef {{ [M in WorkspaceMethod]: (...args: Parameters<(typeof mockWorkspace)[M]>) => ReturnType<(typeof mockWorkspace)[M]> }} WorkspaceClient
+ */
 
 const live = () => getMode() === "live";
-const adapter = () => (live() ? liveAdapter : mockAdapter);
+const clinic = () => (live() ? liveAdapter : mockAdapter);
+const workspace = () => (live() ? liveWorkspace : mockWorkspace);
 
-export const api = Object.fromEntries(
-  METHODS.map((m) => [m, (...args) => adapter()[m](...args)])
-);
+/** @type {ApiClient} */
+export const api = {
+  ping: () => clinic().ping(),
+  listPatients: () => clinic().listPatients(),
+  createPatient: (payload) => clinic().createPatient(payload),
+  listSessions: () => clinic().listSessions(),
+  createSession: (payload) => clinic().createSession(payload),
+  listReports: () => clinic().listReports(),
+  generateReport: (payload) => clinic().generateReport(payload),
+  downloadReport: (payload) => clinic().downloadReport(payload),
+  emailReport: (payload) => clinic().emailReport(payload),
+};
 
 // Intake workspace API (templates, sessions, answer events, review, handoff).
-export const workspaceApi = Object.fromEntries(
-  WORKSPACE_METHODS.map((m) => [m, (...args) => (live() ? liveWorkspace : mockWorkspace)[m](...args)])
-);
+/** @type {WorkspaceClient} */
+export const workspaceApi = {
+  getTemplates: () => workspace().getTemplates(),
+  getTemplate: (payload) => workspace().getTemplate(payload),
+  createSession: (payload) => workspace().createSession(payload),
+  getTranscript: (payload) => workspace().getTranscript(payload),
+  getEvents: (payload) => workspace().getEvents(payload),
+  appendTranscriptLine: (payload) => workspace().appendTranscriptLine(payload),
+  getSttToken: () => workspace().getSttToken(),
+  drafts: (payload) => workspace().drafts(payload),
+  recordClinicianAction: (payload) => workspace().recordClinicianAction(payload),
+  retainDraft: (payload) => workspace().retainDraft(payload),
+  discardDraft: (payload) => workspace().discardDraft(payload),
+  requestHandoff: (payload) => workspace().requestHandoff(payload),
+  playQuestion: (payload) => workspace().playQuestion(payload),
+};

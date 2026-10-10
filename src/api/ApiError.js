@@ -1,5 +1,9 @@
 // Normalised error thrown by both adapters so the UI renders one error shape.
 export default class ApiError extends Error {
+  /**
+   * @param {string} message
+   * @param {{ status?: number, code?: string, fieldErrors?: Record<string, string> }} [options]
+   */
   constructor(message, { status = 0, code = "UNKNOWN", fieldErrors = {} } = {}) {
     super(message);
     this.name = "ApiError";

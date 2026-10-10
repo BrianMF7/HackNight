@@ -31,6 +31,7 @@ export const transcript = [
 ];
 
 // Backend-style events. `at` is the playback second at which each arrives.
+/** @type {import("../../components/workspace/applyLiveDrafts.js").PlaybackEvent[]} */
 export const events = [
   { at: 8, fieldId: "AIQ-001", status: "draft", answer: "Feeling overwhelmed and anxious; difficulty functioning.", evidence: "\"I've been feeling really overwhelmed and anxious, and it's getting hard to function.\"", t: 6 },
   { at: 20, fieldId: "AIQ-002", status: "draft", answer: "Approximately six months, following a job change.", evidence: "\"Probably about six months ago, after I changed jobs.\"", t: 18 },

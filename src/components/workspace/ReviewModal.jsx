@@ -52,7 +52,8 @@ export default function ReviewModal({ open, onClose, session, sessionInfo, sessi
         elapsedSeconds: session.elapsed,
         plannedMinutes: sessionInfo.plannedMinutes,
       });
-      if (res.allowed) setSent(res); else setBlocked(res.reasons);
+      if (res.allowed) setSent(res);
+      else if ("reasons" in res) setBlocked(res.reasons);
     } catch (e) {
       setError(isErrorShape(e) && e.message ? e.message : null);
     }

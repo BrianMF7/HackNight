@@ -145,15 +145,15 @@ Starting strict count: **235**.
 **Description:** Annotate adapter parameters with the records they already read. `index.js` method names are `typeof METHODS[number]`, and rest args come from those functions. `JSON.parse` receives a string. `mockWorkspace` can read `safety` because of Task A.
 
 **Acceptance criteria:**
-- [ ] `npx tsc -p ./jsconfig.json --strict --noEmit --pretty false` exits 0
-- [ ] No new diagnostic in a file an earlier task cleared
+- [x] `npx tsc -p ./jsconfig.json --strict --noEmit --pretty false` exits 0
+- [x] No new diagnostic in a file an earlier task cleared
 
 **Verification:**
-- [ ] Strict `tsc` exits 0
-- [ ] `npm run typecheck` exits 0
-- [ ] `npx eslint .` exits 0
-- [ ] `node --test server/test/*.test.js` and `node --test src/lib/*.test.js` pass
-- [ ] `npm run build` exits 0
+- [x] Strict `tsc` exits 0
+- [x] `npm run typecheck` exits 0
+- [x] `npx eslint .` exits 0
+- [x] `node --test server/test/*.test.js` and `node --test src/lib/*.test.js` pass
+- [x] `npm run build` exits 0
 
 **Dependencies:** Tasks A–E
 
@@ -173,9 +173,9 @@ Starting strict count: **235**.
 
 ## Checkpoint: Complete
 
-- [ ] Strict `tsc` exits 0 (was 235)
-- [ ] `npm run typecheck` exits 0
-- [ ] `npx eslint .` exits 0
-- [ ] Server and lib tests pass
-- [ ] `npm run build` exits 0
-- [ ] Landing and login pages show no Vite overlay when a dev server is running
+- [x] Strict `tsc` exits 0 (was 235)
+- [x] `npm run typecheck` exits 0
+- [x] `npx eslint .` exits 0
+- [x] Server and lib tests pass
+- [x] `npm run build` exits 0
+- [x] Landing and login pages show no Vite overlay when a dev server is running

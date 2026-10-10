@@ -9,6 +9,13 @@ import { getBackendUrl, getBackendToken } from "./config.js";
  * @typedef {Record<string, string | undefined>} Params
  * @typedef {{ params?: Params, body?: unknown }} RequestOptions
  * @typedef {Record<string, string | undefined>} WorkspaceCall
+ * @typedef {{ templateId: string, therapistName?: string, therapistEmail?: string, live?: boolean }} CreateSessionInput
+ * @typedef {{ sessionId: string, t?: number, speaker?: string, text?: string }} TranscriptInput
+ * @typedef {{ sessionId: string, pass?: string, drafts?: ReadonlyArray<{ fieldId?: string, status?: string, answer?: string, evidence?: string, t?: number }> }} DraftsInput
+ * @typedef {{ sessionId: string, fieldId: string, action: string, answer: string }} ActionInput
+ * @typedef {{ sessionId: string }} SessionRef
+ * @typedef {{ sessionId: string, confirmedIds: string[], recipientEmail?: string, elapsedSeconds: number, plannedMinutes: number }} HandoffInput
+ * @typedef {{ sessionId: string, fieldId?: string }} PlayInput
  * @typedef {{ message?: string, error?: string, code?: string }} ErrorBody
  */
 
@@ -69,16 +76,16 @@ async function request(name, { params, body } = {}) {
 export const liveWorkspace = {
   getTemplates: () => request("getTemplates"),
   getTemplate: (/** @type {WorkspaceCall} */ { templateId }) => request("getTemplate", { params: { templateId } }),
-  createSession: (/** @type {WorkspaceCall} */ payload) => request("createSession", { body: payload }),
-  getTranscript: (/** @type {WorkspaceCall} */ { sessionId }) => request("getTranscript", { params: { sessionId } }),
-  getEvents: (/** @type {WorkspaceCall} */ { sessionId }) => request("getEvents", { params: { sessionId } }),
-  appendTranscriptLine: (/** @type {WorkspaceCall & { t?: number, speaker?: string, text?: string }} */ { sessionId, t, speaker, text }) =>
+  createSession: (/** @type {CreateSessionInput} */ payload) => request("createSession", { body: payload }),
+  getTranscript: (/** @type {SessionRef} */ { sessionId }) => request("getTranscript", { params: { sessionId } }),
+  getEvents: (/** @type {SessionRef} */ { sessionId }) => request("getEvents", { params: { sessionId } }),
+  appendTranscriptLine: (/** @type {TranscriptInput} */ { sessionId, t, speaker, text }) =>
     request("appendTranscriptLine", { params: { sessionId }, body: { t, speaker, text } }),
   getSttToken: () => request("getSttToken"),
-  drafts: (/** @type {WorkspaceCall} */ payload) => request("drafts", { params: { sessionId: payload.sessionId }, body: payload }),
-  recordClinicianAction: (/** @type {WorkspaceCall} */ payload) => request("recordClinicianAction", { params: { sessionId: payload.sessionId }, body: payload }),
-  retainDraft: (/** @type {WorkspaceCall} */ { sessionId }) => request("retainDraft", { params: { sessionId } }),
-  discardDraft: (/** @type {WorkspaceCall} */ { sessionId }) => request("discardDraft", { params: { sessionId } }),
-  requestHandoff: (/** @type {WorkspaceCall} */ payload) => request("requestHandoff", { params: { sessionId: payload.sessionId }, body: payload }),
-  playQuestion: (/** @type {WorkspaceCall} */ { sessionId, fieldId }) => request("playQuestion", { params: { sessionId }, body: { fieldId } }),
+  drafts: (/** @type {DraftsInput} */ payload) => request("drafts", { params: { sessionId: payload.sessionId }, body: payload }),
+  recordClinicianAction: (/** @type {ActionInput} */ payload) => request("recordClinicianAction", { params: { sessionId: payload.sessionId }, body: payload }),
+  retainDraft: (/** @type {SessionRef} */ { sessionId }) => request("retainDraft", { params: { sessionId } }),
+  discardDraft: (/** @type {SessionRef} */ { sessionId }) => request("discardDraft", { params: { sessionId } }),
+  requestHandoff: (/** @type {HandoffInput} */ payload) => request("requestHandoff", { params: { sessionId: payload.sessionId }, body: payload }),
+  playQuestion: (/** @type {PlayInput} */ { sessionId, fieldId }) => request("playQuestion", { params: { sessionId }, body: { fieldId } }),
 };

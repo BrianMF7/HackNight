@@ -1,12 +1,22 @@
 // DEMO MODE ONLY. In-browser sample data. No validation authority lives here:
 // the real backend owns clinical validation, session timing rules, PDF and email.
 // This adapter only simulates the *shape* of responses so the UI can be reviewed.
+/**
+ * @typedef {{ id: string, fullName?: string, dob?: string, phone?: string, email?: string, reason?: string, status?: string }} Patient
+ * @typedef {{ id: string, patientId?: string, patientName?: string, startsAt?: string, durationMinutes?: number, type?: string, status?: string }} ClinicSession
+ * @typedef {{ id: string, sessionId?: string, patientName?: string, createdAt?: string, status?: string, emailedTo?: string | null }} ClinicReport
+ * @typedef {{ patients: Patient[], sessions: ClinicSession[], reports: ClinicReport[] }} MockDb
+ * @typedef {import("./liveAdapter.js").AdapterCall} AdapterCall
+ */
+
 const KEY = "clinicolink_mock_db";
 const delay = (ms = 350) => new Promise((r) => setTimeout(r, ms));
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/** @returns {MockDb} */
 const seed = () => {
   const today = new Date();
+  /** @param {number} d @param {number} h */
   const at = (d, h) => {
     const x = new Date(today);
     x.setDate(x.getDate() + d);
@@ -29,18 +39,20 @@ const seed = () => {
   };
 };
 
+/** @returns {MockDb} */
 const load = () => {
   const raw = localStorage.getItem(KEY);
-  if (raw) return JSON.parse(raw);
+  if (raw) return /** @type {MockDb} */ (JSON.parse(raw));
   const db = seed();
   localStorage.setItem(KEY, JSON.stringify(db));
   return db;
 };
+/** @param {MockDb} db */
 const save = (db) => localStorage.setItem(KEY, JSON.stringify(db));
 
 export const mockAdapter = {
   async listPatients() { await delay(); return load().patients; },
-  async createPatient(payload) {
+  async createPatient(/** @type {AdapterCall} */ payload) {
     await delay();
     const db = load();
     const patient = { id: uid(), status: "active", ...payload };
@@ -49,7 +61,7 @@ export const mockAdapter = {
     return patient;
   },
   async listSessions() { await delay(); return load().sessions; },
-  async createSession(payload) {
+  async createSession(/** @type {AdapterCall} */ payload) {
     await delay();
     const db = load();
     const patient = db.patients.find((p) => p.id === payload.patientId);
@@ -59,7 +71,7 @@ export const mockAdapter = {
     return session;
   },
   async listReports() { await delay(); return load().reports; },
-  async generateReport({ sessionId }) {
+  async generateReport(/** @type {AdapterCall} */ { sessionId }) {
     await delay(700);
     const db = load();
     const s = db.sessions.find((x) => x.id === sessionId);
@@ -68,8 +80,8 @@ export const mockAdapter = {
     save(db);
     return report;
   },
-  async downloadReport() { await delay(); return { demo: true }; },
-  async emailReport({ reportId, to }) {
+  async downloadReport(/** @type {AdapterCall} */ _call) { await delay(); return { demo: true }; },
+  async emailReport(/** @type {AdapterCall} */ { reportId, to }) {
     await delay(600);
     const db = load();
     const r = db.reports.find((x) => x.id === reportId);
