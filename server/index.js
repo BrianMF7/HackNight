@@ -51,7 +51,7 @@ export function createServer({
       }
     }
 
-    const sessionResponse = handleSession(req.method, url.pathname, body, Date.now());
+    const sessionResponse = await handleSession(req.method, url.pathname, body, Date.now());
     if (sessionResponse) {
       json(res, sessionResponse.status, sessionResponse.body);
       return;

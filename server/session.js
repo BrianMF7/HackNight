@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { events, syntheticSession, transcript } from "../src/api/fixtures/syntheticSession.js";
+import { draftFromTranscript } from "./gemini.js";
 import { applyDrafts } from "./ground.js";
 import { getTemplate } from "./template.js";
 
@@ -59,7 +60,34 @@ function publicSession(record) {
   };
 }
 
-export function handleSession(method, pathname, body, now) {
+function questionList(template) {
+  return template.pages.flatMap((page) =>
+    page.sections.flatMap((section) => section.questions.map((question) => ({ id: question.id, label: question.label }))),
+  );
+}
+
+function recordedGeminiBody() {
+  return JSON.parse(readFileSync(new URL("./fixtures/gemini-ramble-response.json", import.meta.url), "utf8"));
+}
+
+async function handleDrafts(rawId) {
+  let sessionId;
+  try {
+    sessionId = decodeURIComponent(rawId);
+  } catch {
+    return notFound();
+  }
+  const record = sessions.get(sessionId);
+  if (!record) return notFound();
+  // shortcut: recorded fixture only; a synthetic:false body is ignored and Gemini is not called.
+  const grounded = await draftFromTranscript(record.transcript, questionList(getTemplate(record.templateId)), {
+    synthetic: true,
+    body: recordedGeminiBody(),
+  });
+  return { status: 200, body: grounded };
+}
+
+export async function handleSession(method, pathname, body, now) {
   if (method === "POST" && pathname === "/api/sessions") {
     const templateId = body?.templateId;
     const form = getTemplate(templateId);
@@ -87,6 +115,8 @@ export function handleSession(method, pathname, body, now) {
   if (transcriptMatch) return sessionPart(transcriptMatch[1], "transcript");
   const eventsMatch = method === "GET" && /^\/api\/sessions\/([^/]+)\/events$/.exec(pathname);
   if (eventsMatch) return sessionPart(eventsMatch[1], "events");
+  const draftsMatch = method === "POST" && /^\/api\/sessions\/([^/]+)\/drafts$/.exec(pathname);
+  if (draftsMatch) return handleDrafts(draftsMatch[1]);
   return null;
 }
 

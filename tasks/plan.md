@@ -138,13 +138,13 @@ flowchart TD
 Use Task 3’s synthetic `{ t, speaker, text }[]` as the only transcript source. Stub Gemini HTTP with a recorded JSON body. Do not call ElevenLabs. Do not wait for Task 10.
 
 - [x] Task 9a: Gemini module, recorded response, ground, PHI + no-diagnosis checks
-- [ ] Task 9b: `POST /api/sessions/:sessionId/drafts` on the synthetic session transcript
+- [x] Task 9b: `POST /api/sessions/:sessionId/drafts` on the synthetic session transcript
 
 ### Checkpoint: After Tasks 9a–9b
 
-- [ ] `node --test server/test/gemini.test.js` passes
-- [ ] Invented quotes fill nothing; request text has no diagnosis-code instruction
-- [ ] Live (or curl) createSession → POST drafts → grounded events from the synthetic transcript
+- [x] `node --test server/test/gemini.test.js` passes
+- [x] Invented quotes fill nothing; request text has no diagnosis-code instruction
+- [x] Live (or curl) createSession → POST drafts → grounded events from the synthetic transcript
 - [ ] Human review before treating Scribe as the transcript source
 
 ### Phase 4b: Sponsors that need STT

@@ -272,14 +272,14 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** `POST /api/sessions/:sessionId/drafts` loads that session’s stored transcript (Task 3 fixture), runs Task 9a, and returns grounded events. Wire the path in `liveWorkspace` (`drafts` / equivalent). Default body is synthetic. Missing session is 404. Does not start Scribe or accept audio.
 
 **Acceptance criteria:**
-- [ ] After createSession, POST drafts returns grounded events whose quotes match the session transcript
-- [ ] Unknown sessionId is 404
-- [ ] Live adapter exposes the drafts route (no longer null)
+- [x] After createSession, POST drafts returns grounded events whose quotes match the session transcript
+- [x] Unknown sessionId is 404
+- [x] Live adapter exposes the drafts route (no longer null)
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js` (route cases included or a focused drafts test)
-- [ ] Build succeeds: `node --check server/index.js && node --check server/gemini.js`
-- [ ] Manual check: bearer createSession → POST drafts → events look like grounded drafts
+- [x] Tests pass: `node --test server/test/gemini.test.js` (route cases included or a focused drafts test)
+- [x] Build succeeds: `node --check server/index.js && node --check server/gemini.js`
+- [x] Manual check: bearer createSession → POST drafts → events look like grounded drafts
 
 **Dependencies:** Task 9a
 
@@ -394,9 +394,9 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Checkpoint: After Tasks 9a–9b
 
-- [ ] `node --test server/test/gemini.test.js` passes
-- [ ] Invented quotes fill nothing; prompt has no diagnosis-code instruction
-- [ ] createSession → POST drafts works on the synthetic transcript
+- [x] `node --test server/test/gemini.test.js` passes
+- [x] Invented quotes fill nothing; prompt has no diagnosis-code instruction
+- [x] createSession → POST drafts works on the synthetic transcript
 - [ ] Review with human before Task 9c / live Scribe
 
 ---

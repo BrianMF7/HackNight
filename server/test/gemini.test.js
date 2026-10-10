@@ -1,9 +1,37 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { test } from "node:test";
+import { after, before, test } from "node:test";
 import { transcript } from "../../src/api/fixtures/syntheticSession.js";
+import { workspaceEndpoints } from "../../src/api/liveWorkspace.js";
 import { buildRequestText, draftFromTranscript } from "../gemini.js";
+import { createServer } from "../index.js";
 import { getTemplate } from "../template.js";
+
+const TOKEN = "test-token";
+const ORIGIN = "http://localhost:5173";
+
+let server;
+let base;
+
+before(async () => {
+  server = createServer({ token: TOKEN, origin: ORIGIN });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  base = `http://127.0.0.1:${server.address().port}`;
+});
+
+after(async () => {
+  if (!server) return;
+  await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+});
+
+function authHeaders() {
+  return {
+    Authorization: `Bearer ${TOKEN}`,
+    Origin: ORIGIN,
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+}
 
 const recorded = JSON.parse(readFileSync(new URL("../fixtures/gemini-ramble-response.json", import.meta.url), "utf8"));
 
@@ -103,4 +131,47 @@ test("synthetic false without ALLOW_PHI refuses before any Gemini call", async (
     if (previous === undefined) delete process.env.ALLOW_PHI;
     else process.env.ALLOW_PHI = previous;
   }
+});
+
+test("live adapter exposes the drafts route", () => {
+  assert.deepEqual(workspaceEndpoints.drafts, { method: "POST", path: "/api/sessions/:sessionId/drafts" });
+});
+
+test("POST drafts returns grounded events whose quotes are in the session transcript", async () => {
+  const created = await fetch(`${base}/api/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ templateId: "adult-intake-v1", therapistEmail: "therapist@example.com" }),
+  });
+  assert.equal(created.status, 200);
+  const { id } = await created.json();
+
+  const res = await fetch(`${base}/api/sessions/${id}/drafts`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  assert.equal(res.status, 200);
+  const drafts = await res.json();
+  assert.equal(drafts.length, 1);
+  assert.equal(drafts[0].fieldId, "AIQ-001");
+  const corpus = transcript.map((line) => line.text).join("\n");
+  const quotes = [...String(drafts[0].evidence).matchAll(/"([^"]*)"/g)].map((match) => match[1]);
+  assert.equal(quotes.length > 0, true);
+  for (const quote of quotes) {
+    for (const part of quote.split("...").map((part) => part.trim()).filter(Boolean)) {
+      assert.equal(corpus.includes(part), true);
+    }
+  }
+  assert.equal(drafts.some((draft) => String(draft.evidence).includes("chest pain")), false);
+});
+
+test("an unknown session drafts route is 404", async () => {
+  const res = await fetch(`${base}/api/sessions/missing/drafts`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  assert.equal(res.status, 404);
+  assert.equal((await res.json()).code, "NOT_FOUND");
 });
