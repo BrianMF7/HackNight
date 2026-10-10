@@ -234,26 +234,32 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
-## Task 9: Gemini drafts from transcript
+## Phase 4a: Gemini without Task 11
 
-**Description:** Ask Gemini for draft events from the session’s transcript lines (fixture or Scribe) plus the question list, then `ground` them. Tests use a recorded Gemini response. The request must not ask for a diagnosis code. Refuse a body marked `synthetic: false` unless `ALLOW_PHI=1`. Wire `POST .../drafts` in the live adapter when this task lands.
+Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scribe, no mic, no Task 10.
+
+---
+
+## Task 9a: Gemini module + fixture + ground
+
+**Description:** Pure server module: given transcript lines, the adult-intake question list, and a Gemini JSON body (injected or fetched), produce draft events and run them through `applyDrafts` / `ground`. Tests never hit the network; they load `server/fixtures/gemini-ramble-response.json`. Build the request text so it never instructs a diagnosis code. If the call options mark `synthetic: false` and `ALLOW_PHI` is unset, refuse before any fetch.
 
 **Acceptance criteria:**
-- [ ] A recorded response with real quotes becomes grounded drafts
-- [ ] An invented quote is rejected and nothing is filled
-- [ ] The request body has no instruction to put a diagnosis code on the form
+- [x] Recorded response whose quotes appear in the synthetic transcript becomes grounded drafts
+- [x] An invented quote in the recorded response fills nothing (dropped by `ground`)
+- [x] The built request / prompt string has no instruction to put a diagnosis code on the form
+- [x] `synthetic: false` without `ALLOW_PHI=1` throws or returns a refusal; no Gemini call
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js`
-- [ ] Build succeeds: `node --check server/gemini.js`
-- [ ] Manual check: with `GEMINI_API_KEY`, one synthetic transcript only
+- [x] Tests pass: `node --test server/test/gemini.test.js`
+- [x] Build succeeds: `node --check server/gemini.js`
+- [ ] Manual check (optional): with `GEMINI_API_KEY`, one synthetic transcript only
 
-**Dependencies:** Tasks 3, 10
+**Dependencies:** Task 3
 
 **Files likely touched:**
 - `server/gemini.js`
 - `server/fixtures/gemini-ramble-response.json`
-- `src/api/liveWorkspace.js`
 - `.env.example`
 - `server/test/gemini.test.js`
 
@@ -261,9 +267,56 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
+## Task 9b: POST drafts on the synthetic session
+
+**Description:** `POST /api/sessions/:sessionId/drafts` loads that session’s stored transcript (Task 3 fixture), runs Task 9a, and returns grounded events. Wire the path in `liveWorkspace` (`drafts` / equivalent). Default body is synthetic. Missing session is 404. Does not start Scribe or accept audio.
+
+**Acceptance criteria:**
+- [ ] After createSession, POST drafts returns grounded events whose quotes match the session transcript
+- [ ] Unknown sessionId is 404
+- [ ] Live adapter exposes the drafts route (no longer null)
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/gemini.test.js` (route cases included or a focused drafts test)
+- [ ] Build succeeds: `node --check server/index.js && node --check server/gemini.js`
+- [ ] Manual check: bearer createSession → POST drafts → events look like grounded drafts
+
+**Dependencies:** Task 9a
+
+**Files likely touched:**
+- `server/gemini.js`, `server/session.js`, `server/index.js`
+- `src/api/liveWorkspace.js`
+- `server/test/gemini.test.js`
+
+**Estimated scope:** Small: 1–2 files (plus test)
+
+---
+
+## Task 9c: Drafts from Scribe lines (deferred)
+
+**Description:** Same Gemini + ground path as 9a/9b, but transcript lines come from Task 10’s normalized full Scribe transcript (fed by Task 11 chunks). No new grounding rules. Skip until STT works.
+
+**Acceptance criteria:**
+- [ ] Drafts run against Scribe-normalized lines and still pass `ground`
+- [ ] Synthetic fixture path from 9b still works
+
+**Verification:**
+- [ ] Tests pass: `node --test server/test/gemini.test.js`
+- [ ] Manual check: only after Task 11 human approval for live audio
+
+**Dependencies:** Tasks 9b, 10, 11
+
+**Files likely touched:**
+- `server/gemini.js`, `server/session.js`
+- `server/test/gemini.test.js`
+
+**Estimated scope:** Small: 1–2 files
+
+---
+
 ## Task 10: Full Scribe transcript lines
 
-**Description:** Normalize the full ElevenLabs Scribe transcript into the same `{ t, speaker, text }` lines Task 3 already uses. Tests use a recorded Scribe payload (no live network). An empty transcript becomes no lines. Those lines must pass `ground` when quoted. Replaces the old Zoom timeline import.
+**Description:** Normalize the full ElevenLabs Scribe transcript into the same `{ t, speaker, text }` lines Task 3 already uses. Tests use a recorded Scribe payload (no live network). An empty transcript becomes no lines. Those lines must pass `ground` when quoted. Replaces the old Zoom timeline import. Not required for Tasks 9a–9b.
 
 **Acceptance criteria:**
 - [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
@@ -287,7 +340,7 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ## Task 11: ElevenLabs Scribe real-time STT
 
-**Description:** Live speech-to-text via ElevenLabs Scribe. Partial results append to the in-memory session transcript (`POST .../transcript/chunks`). No text-to-speech and no “play question” route. Tests stub the Scribe HTTP/stream call with recorded chunks. Live mic only with `ELEVENLABS_API_KEY` and human approval.
+**Description:** Live speech-to-text via ElevenLabs Scribe. Partial results append to the in-memory session transcript (`POST .../transcript/chunks`). No text-to-speech and no “play question” route. Tests stub the Scribe HTTP/stream call with recorded chunks. Live mic only with `ELEVENLABS_API_KEY` and human approval. Not required for Tasks 9a–9b.
 
 **Acceptance criteria:**
 - [ ] Stubbed Scribe chunks append as `{ t, speaker, text }` on the session
@@ -339,9 +392,19 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
+## Checkpoint: After Tasks 9a–9b
+
+- [ ] `node --test server/test/gemini.test.js` passes
+- [ ] Invented quotes fill nothing; prompt has no diagnosis-code instruction
+- [ ] createSession → POST drafts works on the synthetic transcript
+- [ ] Review with human before Task 9c / live Scribe
+
+---
+
 ## Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic path: fixture or Scribe transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Optional live path: Scribe lines → same drafts endpoint
 - [ ] Tiger row when `DATABASE_URL` is set
 - [ ] Human approves before a live microphone, real Scribe session, or a real inbox

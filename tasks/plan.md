@@ -77,17 +77,23 @@ flowchart TD
   choice[Task6 Keep or discard]
   gate[Task7 Handoff refusal]
   send[Task8 One PDF email]
+  geminiCore[Task9a Gemini module fixture]
+  geminiRoute[Task9b POST drafts synthetic]
   scribe[Task11 ElevenLabs Scribe STT]
   transcript[Task10 Full Scribe transcript]
-  gemini[Task9 Gemini drafts]
+  geminiLive[Task9c drafts from Scribe lines]
   tiger[Task12 Tiger row]
   ping --> template --> session
   session --> confirm --> choice --> gate
   clock --> gate
   gate --> send
-  session --> scribe --> transcript --> gemini
+  session --> geminiCore --> geminiRoute
+  session --> scribe --> transcript --> geminiLive
+  geminiRoute --> geminiLive
   send --> tiger
 ```
+
+**Parallel note:** After Task 3, Phase 4a (Tasks 9a–9b) can run without waiting for Tasks 4–8 or 11. Tasks 10–11 and 9c stay blocked on live STT.
 
 ## Task list
 
@@ -127,17 +133,32 @@ flowchart TD
 - [ ] Live handoff shows refusal reasons in the review dialog, then one send at or after 45:00
 - [ ] Human review before sponsor integrations
 
-### Phase 4: Sponsors
+### Phase 4a: Gemini drafts without live STT (after Task 3; no Task 11)
+
+Use Task 3’s synthetic `{ t, speaker, text }[]` as the only transcript source. Stub Gemini HTTP with a recorded JSON body. Do not call ElevenLabs. Do not wait for Task 10.
+
+- [x] Task 9a: Gemini module, recorded response, ground, PHI + no-diagnosis checks
+- [ ] Task 9b: `POST /api/sessions/:sessionId/drafts` on the synthetic session transcript
+
+### Checkpoint: After Tasks 9a–9b
+
+- [ ] `node --test server/test/gemini.test.js` passes
+- [ ] Invented quotes fill nothing; request text has no diagnosis-code instruction
+- [ ] Live (or curl) createSession → POST drafts → grounded events from the synthetic transcript
+- [ ] Human review before treating Scribe as the transcript source
+
+### Phase 4b: Sponsors that need STT
 
 - [ ] Task 11: ElevenLabs Scribe real-time STT
 - [ ] Task 10: Full Scribe transcript lines
-- [ ] Task 9: Gemini drafts from transcript
+- [ ] Task 9c: Point drafts at Scribe-normalized lines (same Gemini + ground path)
 - [ ] Task 12: Tiger stores the sent packet
 
 ### Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic path: fixture or Scribe transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Optional live path: Scribe lines → same drafts endpoint
 - [ ] Tiger row only when `DATABASE_URL` is set
 - [ ] Human approval before a live microphone, real Scribe session, or a real inbox
 
