@@ -6,7 +6,7 @@ Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Chec
 
 Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
-**Current slice:** Tasks 9c-1 through 9c-6. Task 11 is done. Task 10 is not a step. Tasks 4, 6, 7, 8, and 12 stay open and are not this slice. The final transcript pass is 9c-5 and 9c-6. It does not run on each commit.
+**Current slice:** Wire live `requestHandoff` (still `null`) and reason `{ code, message }` objects for the review alert, then Task 12. Tasks 1–9c and 11 are in the tree. Task 4 and Tasks 6–8 server modules landed from teammate merges. Task 10 is absent. `GET /api/db/ping` exists; `server/store.js` does not.
 
 ---
 
@@ -99,18 +99,18 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** Email is allowed only once the session has lasted 45:00. Times are arguments. `elapsed < 45:00` is `under`. `elapsed >= 45:00` is `met`. Do not treat 45:00 as an expiration. No `SEND_GATE_EXPIRED`.
 
 **Acceptance criteria:**
-- [ ] 44:59 is `under` and 45:00 is `met`
-- [ ] The module does not call `Date.now()`
-- [ ] Callers can pass a fixed start and end and get the same status twice
+- [x] 44:59 is `under` and 45:00 is `met`
+- [x] The module does not call `Date.now()`
+- [x] Callers can pass a fixed start and end and get the same status twice
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/clock.test.js`
-- [ ] Build succeeds: `node --check server/clock.js`
+- [x] Tests pass: `node --test server/test/clock.test.js`
+- [x] Build succeeds: `node --check server/clock.js`
 - [ ] Manual check: boundaries at 44:59 and 45:00
 
 **Dependencies:** Task 1
 
-**Files likely touched:**
+**Files present:**
 - `server/clock.js`
 - `server/test/clock.test.js`
 
@@ -149,16 +149,17 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Acceptance criteria:**
 - [x] Keep returns `{ ok: true, status: "draft_retained", sent: false }` and no mailer call
 - [x] Discard clears the session and still does not email
-- [ ] Both leave the mailer at zero messages when elapsed is already `met` (nothing is marked sent at 46:00 today; Task 8 adds the fake-mailer zero-count assert to `disconnect.test.js`)
+- [x] Keep and discard after 45:00 still mark nothing sent (retain/discard never touch the mailer)
 
 **Verification:**
 - [x] Tests pass: `node --test server/test/disconnect.test.js`
 - [x] Build succeeds: `node --check server/disconnect.js`
+- [x] Live adapter wires `retainDraft` and `discardDraft`
 - [ ] Manual check: keep and discard both leave sent false
 
 **Dependencies:** Task 5
 
-**Files likely touched:**
+**Files present:**
 - `server/disconnect.js`
 - `src/api/liveWorkspace.js`
 - `server/test/disconnect.test.js`
@@ -169,10 +170,11 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ## Checkpoint: After Tasks 4–6
 
-- [ ] `node --test` passes
-- [ ] Under 45:00, keep and discard email nothing
-- [ ] A waived safety item is not confirmed
-- [ ] Review with human before proceeding
+- [x] Focused clock, actions, and disconnect tests pass
+- [x] Keep and discard email nothing (no mailer on those routes)
+- [x] A waived safety item is not confirmed
+- [ ] Review with human before treating send as demo-ready
+- [ ] Full `node --test` after `npm install`
 
 ---
 
@@ -181,20 +183,23 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `POST .../handoff` returns HTTP 200 `{ allowed: false, reasons }` when the server clock is `under`, any required id is unconfirmed, any safety id is unresolved, or the stored therapist email is missing. No PDF bytes and no mailer call. Client `elapsedSeconds` is ignored.
 
 **Acceptance criteria:**
-- [ ] Each of the four cases produces its reason code (`SEND_GATE_NOT_MET`, `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`)
-- [ ] Refused handoff records zero emails
-- [ ] Client-supplied elapsed and confirmedIds do not bypass the gate
+- [x] Each of the four cases produces its reason code (`SEND_GATE_NOT_MET`, `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`)
+- [x] Refused handoff records zero emails
+- [x] Client-supplied elapsed and confirmedIds do not bypass the gate
+- [ ] Live adapter `requestHandoff` is `{ method: "POST", path: "/api/sessions/:sessionId/handoff" }` (still `null`)
+- [ ] Refusal `reasons` are `{ code, message }` objects (`BlockedHandoffAlert` / mock); server currently returns code strings
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/handoff-gate.test.js`
-- [ ] Build succeeds: `node --check server/handoff.js`
+- [x] Tests pass: `node --test server/test/handoff-gate.test.js`
+- [x] Build succeeds: `node --check server/handoff.js`
+- [ ] Manual check: live review dialog shows refusal messages, then one send at or after 45:00
 
 **Dependencies:** Tasks 4, 5, 6
 
-**Files likely touched:**
-- `server/handoff.js`
-- `src/api/liveWorkspace.js`
+**Files present:**
+- `server/handoff.js`, `server/clock.js`, wired from `server/index.js`
 - `server/test/handoff-gate.test.js`
+- `src/api/liveWorkspace.js` (`requestHandoff` still null)
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -205,23 +210,23 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** When the clock is `met`, every required id is confirmed on the server, and the therapist email is present, build one PDF with `pdf-lib` (confirmed answers, quotes, a confirmation line, no diagnosis code) and email that buffer once via a fake mailer in tests. A second handoff of the same session sends nothing new. Update the one check in `src/api/mockWorkspace.js` from `SEND_GATE_EXPIRED` to `SEND_GATE_NOT_MET` when elapsed is under 45:00. Nodemailer runs only when `SMTP_URL` is set.
 
 **Acceptance criteria:**
-- [ ] One allowed send emails `therapist@example.com` once
-- [ ] A repeat adds zero messages
-- [ ] Under 45:00 still sends nothing
-- [ ] The mock returns `SEND_GATE_NOT_MET` below 45:00 and does not return `SEND_GATE_EXPIRED`
+- [x] One allowed send emails `therapist@example.com` once
+- [x] A repeat adds zero messages
+- [x] Under 45:00 still sends nothing
+- [x] The mock returns `SEND_GATE_NOT_MET` below 45:00 and does not return `SEND_GATE_EXPIRED`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/send.test.js`
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `node --test server/test/send.test.js`
+- [ ] Build succeeds: `npm run build` (deps `pdf-lib`, `nodemailer`, `postgres` are in `package.json`; install if missing locally)
 - [ ] Manual check: open the stamped PDF and see the presenting-problem answer
+- [ ] Live UI path uses the server handoff (blocked until Task 7 live-adapter glue)
 
 **Dependencies:** Task 7
 
-**Files likely touched:**
-- `package.json`
+**Files present:**
+- `package.json` (`pdf-lib`, `nodemailer`)
 - `server/pdf.js`, `server/send.js`, `server/handoff.js`
 - `src/api/mockWorkspace.js`
-- `.env.example`
 - `server/test/send.test.js`
 
 **Estimated scope:** Medium: 3–5 files
@@ -230,11 +235,14 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ## Checkpoint: After Tasks 7–8
 
-- [ ] `node --test` passes and `npm run build` succeeds
-- [ ] Live handoff shows refusal reasons, then one send at or after 45:00
+- [x] Focused handoff-gate and send tests pass
+- [x] Mock gate uses `SEND_GATE_NOT_MET`
+- [ ] Live handoff wired and shows refusal reasons, then one send at or after 45:00
+- [ ] Full `node --test` and `npm run build` after install
 - [ ] Review with human before sponsor integrations
 
 ---
+
 
 ## Phase 4a: Gemini without Task 11
 
@@ -477,6 +485,8 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 **Description:** Normalize a recorded full ElevenLabs Scribe transcript into `{ t, speaker, text }` lines. Not required for Tasks 9a, 9b, or 9c. Task 11’s committed lines are already that shape. Leave this until a transcript file is actually an input.
 
+**Status in tree:** Not present. No `server/scribeTranscript.js`, fixture, or test. Brian’s branch added Tiger ping, not this file.
+
 **Acceptance criteria:**
 - [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
 - [ ] An empty Scribe payload becomes no lines
@@ -496,6 +506,7 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Estimated scope:** Medium: 3–5 files
 
 ---
+
 
 ## Task 11: ElevenLabs Scribe real-time STT
 
@@ -543,27 +554,29 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 **Description:** After Task 8 succeeds, insert one session row (case id, therapist, PDF bytes, `sent_at`) and nudge rows. No raw audio and no full transcript. A refused handoff writes nothing. Missing `DATABASE_URL` skips the insert.
 
+**Already in tree (connectivity only, not this task):** `server/db.js`, `GET /api/db/ping`, `server/test/db.test.js`, `postgres` in `package.json`, `DATABASE_URL` in `.env.example`. Missing `DATABASE_URL` → 503 `NO_DATABASE`.
+
 **Acceptance criteria:**
 - [ ] A successful send writes one row whose PDF bytes match the mailed file, plus nudge rows
 - [ ] A refused send writes nothing
 - [ ] Bound parameters do not include raw audio or the full transcript
 
 **Verification:**
+- [x] DB ping tests pass: `node --test server/test/db.test.js` (connectivity only)
 - [ ] Tests pass: `node --test server/test/store.test.js`
 - [ ] Build succeeds: `node --check server/store.js`
 - [ ] Manual check: with Tiger `DATABASE_URL`, one synthetic send is visible
 
-**Dependencies:** Tasks 7, 8
+**Dependencies:** Tasks 7, 8 (and live handoff glue if the demo path must go through the UI)
 
-**Files likely touched:**
-- `package.json`
-- `server/store.js`, `server/handoff.js`
-- `.env.example`
-- `server/test/store.test.js`
+**Files present / still needed:**
+- Present: `server/db.js`, `server/test/db.test.js`, `package.json` (`postgres`), `.env.example`
+- Needed: `server/store.js`, `server/test/store.test.js`, handoff hook after a successful send
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
+
 
 ## Checkpoint: After Tasks 9a–9b
 
@@ -577,8 +590,8 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Checkpoint: Demo
 
-- [ ] `node --test` passes
+- [ ] `node --test` passes after install
 - [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
-- [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Task 10 is not required.
-- [ ] Tiger row when `DATABASE_URL` is set
+- [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Live handoff works end-to-end. Task 10 is not required.
+- [ ] Tiger row when `DATABASE_URL` is set (ping alone is not enough)
 - [ ] Human approves before a live microphone, real Scribe session, or a real inbox

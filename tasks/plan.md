@@ -61,7 +61,8 @@ Fill these in the live adapter only in the task that implements the handler.
 - `POST /api/sessions/:sessionId/actions` → `{ ok: true }`
 - `POST /api/sessions/:sessionId/retain` → `{ ok: true, status: "draft_retained", sent: false }`
 - `POST /api/sessions/:sessionId/discard` → `{ ok: true }`
-- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, to }` or `{ allowed: false, reasons: [{ code, message }] }` with HTTP 200
+- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, duplicate }` or `{ allowed: false, sent: false, reasons }` with HTTP 200. Server modules and tests are in; the live adapter still has `requestHandoff: null`. Reasons today are code strings; the review alert expects `{ code, message }` objects (mock already returns objects).
+- `GET /api/db/ping` → `{ ok: true, db, ts }` when `DATABASE_URL` is set; 503 `NO_DATABASE` when unset. Connectivity only; not the Task 12 store.
 - `POST /api/stt/token` → `{ token, wsUrl }` single-use ElevenLabs realtime STT token
 - `POST /api/sessions/:sessionId/transcript-lines` → append `{ t, speaker, text }` from a committed STT line. On a live session the same response is `{ t, speaker, text, seq, drafts }` (or `drafts: []` plus `code` when PHI is off or Gemini fails). The line is stored either way.
 
@@ -104,9 +105,9 @@ flowchart TD
   send --> tiger
 ```
 
-**Current slice:** 9c-1 through 9c-6. Task 11 is done. Task 10 is not on this path.
+**Current slice:** wire live `requestHandoff` (and reason shape for the review alert), then Task 12. Tasks 1–9c and 11 are in the tree. Task 10 is not on this path. `GET /api/db/ping` (`server/db.js`) is in; the sent-packet store is not.
 
-**Parallel note:** 9c-1 (WebSocket URL and PCM) and 9c-2 (empty live transcript) do not depend on each other. 9c-3 needs 9c-2 and 9b. 9c-4 needs 9c-3. 9c-5 needs 9c-3 and can run beside 9c-4. 9c-6 needs 9c-4 and 9c-5. Tasks 4 and 6–8 and 12 stay open and are not this slice.
+**Parallel note:** Live handoff wiring is the remaining glue on Tasks 7–8. Task 12 depends on a successful send path. Task 10 stays deferred.
 
 ## Task list
 
@@ -124,27 +125,30 @@ flowchart TD
 
 ### Phase 2: Clock and the clinician’s choice
 
-- [ ] Task 4: 45:00 minimum clock
+- [x] Task 4: 45:00 minimum clock
 - [x] Task 5: Confirm and edit
-- [ ] Task 6: Keep or discard
+- [x] Task 6: Keep or discard
 
 ### Checkpoint: After Tasks 4–6
 
-- [ ] `node --test` passes
-- [ ] Under 45:00, keep and discard email nothing
-- [ ] A waived safety item is not confirmed
-- [ ] Human review before the next phase
+- [x] Focused tests for clock, actions, and disconnect pass (`server/test/clock.test.js`, `actions.test.js`, `disconnect.test.js`)
+- [x] Keep and discard never call the mailer; after 45:00 they still mark nothing sent
+- [x] A waived safety item is not confirmed
+- [ ] Human review before treating send as demo-ready
+- [ ] Full `node --test` after `npm install` (merged deps include `pdf-lib`, `nodemailer`, `postgres`)
 
 ### Phase 3: Send
 
-- [ ] Task 7: Handoff refusal
-- [ ] Task 8: One PDF, one email, and the mock gate
+- [x] Task 7: Handoff refusal (server gate + tests; live adapter still unwired)
+- [x] Task 8: One PDF, one email, and the mock gate (server + mock; live adapter still unwired)
 
 ### Checkpoint: After Tasks 7–8
 
-- [ ] `node --test` passes and `npm run build` succeeds
-- [ ] Live handoff shows refusal reasons in the review dialog, then one send at or after 45:00
+- [x] Focused handoff and send tests pass (`server/test/handoff-gate.test.js`, `send.test.js`)
+- [x] Mock under 45:00 returns `SEND_GATE_NOT_MET` (no `SEND_GATE_EXPIRED`)
+- [ ] Live adapter `requestHandoff` wired; refusal reasons printable in the review dialog; one send at or after 45:00
 - [ ] Human review before sponsor integrations
+- [ ] Full `node --test` and `npm run build` after install
 
 ### Phase 4a: Gemini drafts without live STT (after Task 3; no Task 11)
 
@@ -194,15 +198,16 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 
 ### Later, not this slice
 
-- [ ] Task 10: Full Scribe transcript file (not required for 9c)
-- [ ] Task 12: Tiger stores the sent packet
+- [ ] Live handoff glue: set `workspaceEndpoints.requestHandoff` and return `{ code, message }` reasons the review alert prints
+- [ ] Task 10: Full Scribe transcript file (not in the tree; not required for 9c)
+- [ ] Task 12: Tiger stores the sent packet (`server/store.js` absent; `server/db.js` + `GET /api/db/ping` already land connectivity)
 
 ### Checkpoint: Demo
 
-- [ ] `node --test` passes
+- [ ] `node --test` passes after install
 - [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
-- [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Task 10 is not required.
-- [ ] Tiger row only when `DATABASE_URL` is set
+- [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Live handoff works end-to-end. Task 10 is not required.
+- [ ] Tiger row only when `DATABASE_URL` is set (ping alone is not enough)
 - [ ] Human approval before a live microphone, real Scribe session, or a real inbox
 
 ## Risks and mitigations
