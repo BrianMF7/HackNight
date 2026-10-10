@@ -165,11 +165,11 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** The same `{}` props bug on the display primitives the widened check still reports.
 
 **Acceptance criteria:**
-- [ ] Each forwardRef in these files has a props annotation matching the element it renders
-- [ ] A widened check no longer reports these files
+- [x] Each forwardRef in these files has a props annotation matching the element it renders
+- [x] A widened check no longer reports these files
 
 **Verification:**
-- [ ] Widened `tsc` error list no longer names these files
+- [x] Widened `tsc` error list no longer names these files
 
 **Dependencies:** Task 1
 
