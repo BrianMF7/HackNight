@@ -186,17 +186,17 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Serve the focus agent on its own routes. Use `findSession` and store state on `record.focus`. Call `suggestBindings` only when four new committed lines have arrived, the session has no decision yet, and `record.focusing` is free. Decision and quote reads never call the model. `server/index.js` gains one handler call. `appendTranscriptLine` stays untouched.
 
 **Acceptance criteria:**
-- [ ] `POST .../focus` on a live session whose transcript is the positive fixture, with fetch injected, returns one depression focus, a reason, `addon: []`, and no `quotes` field
-- [ ] A second `POST .../focus` before four further lines returns `skipped: true` and does not call fetch
-- [ ] Two overlapping `POST .../focus` calls share one fetch
-- [ ] `POST .../focus/decision` with `no` hides the focus and does not call fetch; `yes` returns `DEP-001` and `DEP-002` and does not call fetch
-- [ ] `GET .../focus/quotes` returns the bound quotes after a surfaced focus, and `{ quotes: [] }` after No
-- [ ] Unknown session is 404; a bad decision is 400; missing bearer is 401
+- [x] `POST .../focus` on a live session whose transcript is the positive fixture, with fetch injected, returns one depression focus, a reason, `addon: []`, and no `quotes` field
+- [x] A second `POST .../focus` before four further lines returns `skipped: true` and does not call fetch
+- [x] Two overlapping `POST .../focus` calls share one fetch
+- [x] `POST .../focus/decision` with `no` hides the focus and does not call fetch; `yes` returns `DEP-001` and `DEP-002` and does not call fetch
+- [x] `GET .../focus/quotes` returns the bound quotes after a surfaced focus, and `{ quotes: [] }` after No
+- [x] Unknown session is 404; a bad decision is 400; missing bearer is 401
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-routes.test.js`
-- [ ] Build succeeds: `node --check server/focus/routes.js && node --check server/index.js`
-- [ ] Manual check: none until Task 8
+- [x] Tests pass: `node --test server/test/focus-routes.test.js`
+- [x] Build succeeds: `node --check server/focus/routes.js && node --check server/index.js`
+- [x] Manual check: none until Task 8
 
 **Dependencies:** Tasks 4 and 6
 
@@ -216,15 +216,15 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Lock the production behavior this agent is allowed to have. A PHI refusal, a failed fetch, and an empty transcript leave the session in place and return an empty focus. The form-draft path and the handoff gate stay on their current rules. No test in this task uses a live microphone or a real Gemini key.
 
 **Acceptance criteria:**
-- [ ] With `ALLOW_PHI` unset, `POST .../focus` on a live session returns `{ focuses: [], code: "PHI_REFUSED" }` and the injected fetch is not called
-- [ ] A failed fetch returns `{ focuses: [], code: "GEMINI_HTTP" }` once, with no retry, and `GET .../transcript` still has the lines already stored
-- [ ] An empty live transcript returns `{ focuses: [] }` and does not fetch
-- [ ] After Yes, `handoffReasons` still reports only the template’s required ids, and the PDF module is unchanged
-- [ ] `POST .../transcript-lines` on a live session still returns drafts from the form agent without calling `suggestBindings`
+- [x] With `ALLOW_PHI` unset, `POST .../focus` on a live session returns `{ focuses: [], code: "PHI_REFUSED" }` and the injected fetch is not called
+- [x] A failed fetch returns `{ focuses: [], code: "GEMINI_HTTP" }` once, with no retry, and `GET .../transcript` still has the lines already stored
+- [x] An empty live transcript returns `{ focuses: [] }` and does not fetch
+- [x] After Yes, `handoffReasons` still reports only the template’s required ids, and the PDF module is unchanged
+- [x] `POST .../transcript-lines` on a live session still returns drafts from the form agent without calling `suggestBindings`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-routes.test.js server/test/gemini.test.js server/test/handoff-gate.test.js`
-- [ ] Build succeeds: `npm run test:server`
+- [x] Tests pass: `node --test server/test/focus-routes.test.js server/test/gemini.test.js server/test/handoff-gate.test.js`
+- [x] Build succeeds: `npm run test:server`
 - [ ] Manual check: deferred. Do not point a live mic at this route until a person reviews the gold fixtures and the two add-on questions
 
 **Dependencies:** Task 7
@@ -238,7 +238,7 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 
 ## Checkpoint: Backend ready for a later screen
 
-- [ ] `npm run test:server` passes
-- [ ] A committed line still returns grounded drafts, and a focus call cannot start from that handler
-- [ ] Handoff after Yes still uses the existing required-question rule
+- [x] `npm run test:server` passes
+- [x] A committed line still returns grounded drafts, and a focus call cannot start from that handler
+- [x] Handoff after Yes still uses the existing required-question rule
 - [ ] Human approves before `ALLOW_PHI=1` on a real transcript

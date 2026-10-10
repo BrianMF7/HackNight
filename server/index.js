@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { handleActions } from "./actions.js";
 import { createSql, pingDatabase } from "./db.js";
 import { handleDisconnect } from "./disconnect.js";
+import { handleFocus } from "./focus/routes.js";
 import { handleHandoff } from "./handoff.js";
 import { handleSession } from "./session.js";
 import { createScribeToken } from "./stt.js";
@@ -113,6 +114,12 @@ export function createServer({
     }
     if (sessionResponse) {
       json(res, sessionResponse.status, sessionResponse.body);
+      return;
+    }
+
+    const focusResponse = await handleFocus(req.method, url.pathname, body, fetchImpl);
+    if (focusResponse) {
+      json(res, focusResponse.status, focusResponse.body);
       return;
     }
 

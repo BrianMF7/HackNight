@@ -128,8 +128,8 @@ Tasks 1–4 and Tasks 5–6 have no shared files, so the two people work at the 
 
 ### Phase 3: Person 1, after both branches exist
 
-- [ ] Task 7: Focus routes
-- [ ] Task 8: Isolation and failure tests
+- [x] Task 7: Focus routes
+- [x] Task 8: Isolation and failure tests
 
 ### Checkpoint: Backend ready for a later screen
 
