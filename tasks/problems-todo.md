@@ -40,12 +40,12 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** Dialog and alert-dialog wrappers, including the plain header and footer functions, use the same empty or required-prop inference.
 
 **Acceptance criteria:**
-- [ ] Content, title, description, overlay, action, and cancel accept `children` and `className`
-- [ ] Header and footer no longer require `className`
-- [ ] Dialog content still accepts `onInteractOutside` and `onEscapeKeyDown`
+- [x] Content, title, description, overlay, action, and cancel accept `children` and `className`
+- [x] Header and footer no longer require `className`
+- [x] Dialog content still accepts `onInteractOutside` and `onEscapeKeyDown`
 
 **Verification:**
-- [ ] Typecheck no longer reports `dialog.jsx` or `alert-dialog.jsx`, and call sites of those components drop with them
+- [x] Typecheck no longer reports `dialog.jsx` or `alert-dialog.jsx`, and call sites of those components drop with them
 
 **Dependencies:** Task 1 (`alert-dialog` imports `buttonVariants`)
 
