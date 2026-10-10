@@ -61,7 +61,7 @@ Fill these in the live adapter only in the task that implements the handler.
 - `POST /api/sessions/:sessionId/actions` → `{ ok: true }`
 - `POST /api/sessions/:sessionId/retain` → `{ ok: true, status: "draft_retained", sent: false }`
 - `POST /api/sessions/:sessionId/discard` → `{ ok: true }`
-- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, duplicate }` or `{ allowed: false, sent: false, reasons }` with HTTP 200. Server modules and tests are in; the live adapter still has `requestHandoff: null`. Reasons today are code strings; the review alert expects `{ code, message }` objects (mock already returns objects).
+- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent, duplicate, to }` or `{ allowed: false, sent: false, reasons }` with HTTP 200. `reasons` are `{ code, message }` objects the review alert prints as `message`. `to` is the therapist email stored on the session, never the email in the POST body. Tasks 7b and 8b are done. `workspaceEndpoints.requestHandoff` is `POST /api/sessions/:sessionId/handoff`.
 - `GET /api/db/ping` → `{ ok: true, db, ts }` when `DATABASE_URL` is set; 503 `NO_DATABASE` when unset. Connectivity only; not the Task 12 store.
 - `POST /api/stt/token` → `{ token, wsUrl }` single-use ElevenLabs realtime STT token
 - `POST /api/sessions/:sessionId/transcript-lines` → append `{ t, speaker, text }` from a committed STT line. On a live session the same response is `{ t, speaker, text, seq, drafts }` (or `drafts: []` plus `code` when PHI is off or Gemini fails). The line is stored either way.
@@ -102,12 +102,15 @@ flowchart TD
   geminiRoute --> geminiLive
   geminiLive --> finalPass --> finalPaint
   paint --> finalPaint
+  send --> reasons[Task7b reason objects] --> liveHandoff[Task8b live adapter]
   send --> tiger
 ```
 
-**Current slice:** wire live `requestHandoff` (and reason shape for the review alert), then Task 12. Tasks 1–9c and 11 are in the tree. Task 10 is not on this path. `GET /api/db/ping` (`server/db.js`) is in; the sent-packet store is not.
+**Current slice:** Tasks 7b and 8b are done. Task 10 and Task 12 stay out of scope. No in-scope task depends on either of them. Task 12 depends on a successful send; the demo checkpoint’s Tiger row stays blocked on Task 12. `GET /api/db/ping` is connectivity only. The review dialog was not opened in the browser because `/app/workspace` redirects to Base44 login.
 
-**Parallel note:** Live handoff wiring is the remaining glue on Tasks 7–8. Task 12 depends on a successful send path. Task 10 stays deferred.
+**Assumptions for 7b–8b:** Refusal messages match the sentences the mock already shows, except the 45-minute line always says 45 (the server rule), not the client’s `plannedMinutes`. A successful handoff adds `to` from the stored therapist so the review dialog can name the recipient. Demo success copy stays when the response has `demo: true`. Live success does not claim that no email was generated.
+
+**Parallel note:** 7b then 8b are sequential. Do not start Task 10 or Task 12.
 
 ## Task list
 
@@ -146,9 +149,21 @@ flowchart TD
 
 - [x] Focused handoff and send tests pass (`server/test/handoff-gate.test.js`, `send.test.js`)
 - [x] Mock under 45:00 returns `SEND_GATE_NOT_MET` (no `SEND_GATE_EXPIRED`)
-- [ ] Live adapter `requestHandoff` wired; refusal reasons printable in the review dialog; one send at or after 45:00
+- [x] Live adapter `requestHandoff` wired; refusal reasons printable in the review dialog; one send at or after 45:00 (Tasks 7b and 8b). Dialog click-through is still blocked by Base44 login.
 - [ ] Human review before sponsor integrations
-- [ ] Full `node --test` and `npm run build` after install
+- [x] Full `node --test` and `npm run build` after install
+
+### Phase 3b: Live handoff glue (in scope)
+
+- [x] Task 7b: Refusal reasons are `{ code, message }`
+- [x] Task 8b: Live adapter posts handoff
+
+### Checkpoint: After Tasks 7b–8b
+
+- [x] `node --test server/test/handoff-gate.test.js` passes
+- [x] Review alert can print each refusal message; one allowed send names the stored therapist (API and copy covered by tests; the review dialog itself was not opened — Base44 login redirects `/app/workspace`)
+- [x] `npm run test:server` and `npm run build` pass (`node --test`: 95 passed; `npm run build` succeeded)
+- [ ] Human review before Task 10 or Task 12 (both stay deferred)
 
 ### Phase 4a: Gemini drafts without live STT (after Task 3; no Task 11)
 
@@ -196,18 +211,17 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 - [x] Opening review does not call Gemini again when no new line was committed
 - [ ] Human approval before a live microphone with `ALLOW_PHI=1`
 
-### Later, not this slice
+### Out of scope (deferred — do not implement)
 
-- [ ] Live handoff glue: set `workspaceEndpoints.requestHandoff` and return `{ code, message }` reasons the review alert prints
-- [ ] Task 10: Full Scribe transcript file (not in the tree; not required for 9c)
-- [ ] Task 12: Tiger stores the sent packet (`server/store.js` absent; `server/db.js` + `GET /api/db/ping` already land connectivity)
+- [ ] Task 10: Full Scribe transcript file. **OUT OF SCOPE.** No in-scope task depends on it. Not in the tree.
+- [ ] Task 12: Tiger stores the sent packet. **OUT OF SCOPE.** Depends on send; nothing in scope depends on it. `server/store.js` stays absent. `GET /api/db/ping` is not this task.
 
 ### Checkpoint: Demo
 
-- [ ] `node --test` passes after install
+- [x] `node --test` passes after install (95 tests)
 - [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Live handoff works end-to-end. Task 10 is not required.
-- [ ] Tiger row only when `DATABASE_URL` is set (ping alone is not enough)
+- [ ] Tiger row only when `DATABASE_URL` is set — **blocked by Task 12 (out of scope)**; ping alone is not this row
 - [ ] Human approval before a live microphone, real Scribe session, or a real inbox
 
 ## Risks and mitigations

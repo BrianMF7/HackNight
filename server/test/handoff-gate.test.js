@@ -1,31 +1,43 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { workspaceEndpoints } from '../../src/api/liveWorkspace.js';
 import { createServer } from '../index.js';
 import { findSession } from '../session.js';
 import { getTemplate } from '../template.js';
 import { createFakeMailer } from '../send.js';
 import { handoffReasons } from '../handoff.js';
 
+const CLOCK = { code: 'SEND_GATE_NOT_MET', message: 'At least 45 minutes are required before handoff.' };
+const SAFETY = { code: 'SAFETY_UNRESOLVED', message: 'A required safety item is unresolved.' };
+const RECIPIENT = { code: 'NO_RECIPIENT', message: 'No therapist recipient is assigned.' };
+const unconfirmed = (n) => ({ code: 'REQUIRED_UNCONFIRMED', message: `${n} required question(s) are not clinician-confirmed.` });
+
+function questions() {
+  return getTemplate('adult-intake-v1').pages.flatMap(p => p.sections.flatMap(s => s.questions));
+}
+
 function record(overrides = {}) {
   const template = getTemplate('adult-intake-v1');
-  const answers = Object.fromEntries(template.pages.flatMap(p => p.sections.flatMap(s => s.questions))
+  const answers = Object.fromEntries(questions()
     .map(q => [q.id, { status: 'confirmed', answer: 'Synthetic confirmed answer' }]));
   return { templateId: template.id, startedAt: 10_000, therapist: { email: 'therapist@example.com' }, answers, ...overrides };
 }
 
 test('gate rejects under 45 minutes and accepts exactly 45', () => {
-  assert.deepEqual(handoffReasons(record(), 10_000 + 44 * 60_000 + 59_000), ['SEND_GATE_NOT_MET']);
+  assert.deepEqual(handoffReasons(record(), 10_000 + 44 * 60_000 + 59_000), [CLOCK]);
   assert.deepEqual(handoffReasons(record(), 10_000 + 45 * 60_000), []);
 });
 test('all four reasons are returned for missing confirmations, safety, recipient and clock', () => {
   const data = record({ therapist: { email: '' }, answers: {} });
-  assert.deepEqual(handoffReasons(data, 10_000), ['SEND_GATE_NOT_MET','REQUIRED_UNCONFIRMED','SAFETY_UNRESOLVED','NO_RECIPIENT']);
+  const required = questions().filter(q => q.required).length;
+  assert.deepEqual(handoffReasons(data, 10_000), [CLOCK, unconfirmed(required), SAFETY, RECIPIENT]);
 });
 test('a draft, an empty confirmed answer, and a safety draft block handoff', () => {
   const data = record();
   data.answers['AIQ-001'] = { status: 'draft', answer: 'unverified' };
   data.answers['SAF-001'] = { status: 'confirmed', answer: '   ' };
-  assert.deepEqual(handoffReasons(data, 10_000 + 45 * 60_000), ['REQUIRED_UNCONFIRMED','SAFETY_UNRESOLVED']);
+  assert.deepEqual(handoffReasons(data, 10_000 + 45 * 60_000), [unconfirmed(2), SAFETY]);
 });
 
 test('HTTP handoff ignores forged client time and confirmations; authorized send is once', async () => {
@@ -41,7 +53,11 @@ test('HTTP handoff ignores forged client time and confirmations; authorized send
     const route = `/api/sessions/${id}/handoff`;
     let res = await post(route, { elapsedSeconds: 999999, confirmedIds: ['*'], therapistEmail: 'fake@example.com' });
     assert.equal(res.status, 200);
-    assert.equal((await res.json()).allowed, false);
+    const refused = await res.json();
+    assert.equal(refused.allowed, false);
+    assert.equal(refused.sent, false);
+    const required = questions().filter(q => q.required).length;
+    assert.deepEqual(refused.reasons, [CLOCK, unconfirmed(required), SAFETY]);
     assert.equal(mailer.messages.length, 0);
     const entry = findSession(id);
     const template = getTemplate(entry.templateId);
@@ -49,15 +65,31 @@ test('HTTP handoff ignores forged client time and confirmations; authorized send
       entry.answers[q.id] = { status: 'confirmed', answer: q.id === 'AIQ-001' ? 'Seeking support for synthetic stress.' : 'Synthetic answer' };
     }
     entry.startedAt = Date.now() - 45 * 60_000 - 1000;
-    res = await post(route, { elapsedSeconds: 0 });
+    res = await post(route, { elapsedSeconds: 0, therapistEmail: 'fake@example.com' });
     assert.equal(res.status, 200);
-    assert.deepEqual(await res.json(), { allowed: true, sent: true, duplicate: false });
+    assert.deepEqual(await res.json(), { allowed: true, sent: true, duplicate: false, to: 'therapist@example.com' });
     assert.equal(mailer.messages.length, 1);
     assert.equal(mailer.messages[0].to, 'therapist@example.com');
-    res = await post(route, {});
-    assert.equal((await res.json()).duplicate, true);
+    res = await post(route, { therapistEmail: 'fake@example.com' });
+    const again = await res.json();
+    assert.equal(again.duplicate, true);
+    assert.equal(again.sent, false);
+    assert.equal(again.to, 'therapist@example.com');
     assert.equal(mailer.messages.length, 1);
   } finally {
     await new Promise(resolve => server.close(resolve));
   }
+});
+
+test('live adapter posts handoff on the session route', () => {
+  assert.deepEqual(workspaceEndpoints.requestHandoff, {
+    method: 'POST',
+    path: '/api/sessions/:sessionId/handoff',
+  });
+});
+
+test('review success names the recipient and limits the demo disclaimer to demo mode', async () => {
+  const src = await readFile(new URL('../../src/components/workspace/ReviewModal.jsx', import.meta.url), 'utf8');
+  assert.match(src, /sent\.to/);
+  assert.match(src, /sent\.demo \? " In demo mode no email or PDF is actually generated\." : ""/);
 });

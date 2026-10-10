@@ -33,7 +33,7 @@ export const workspaceEndpoints = {
   recordClinicianAction: { method: "POST", path: "/api/sessions/:sessionId/actions" },
   retainDraft: { method: "POST", path: "/api/sessions/:sessionId/retain" },
   discardDraft: { method: "POST", path: "/api/sessions/:sessionId/discard" },
-  requestHandoff: null,
+  requestHandoff: { method: "POST", path: "/api/sessions/:sessionId/handoff" },
   playQuestion: null,
 };
 

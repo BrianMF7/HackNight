@@ -6,7 +6,7 @@ Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Chec
 
 Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
-**Current slice:** Wire live `requestHandoff` (still `null`) and reason `{ code, message }` objects for the review alert, then Task 12. Tasks 1–9c and 11 are in the tree. Task 4 and Tasks 6–8 server modules landed from teammate merges. Task 10 is absent. `GET /api/db/ping` exists; `server/store.js` does not.
+**Current slice:** Tasks 7b and 8b are done. Tasks 1–9c and 11 are in the tree. Task 10 and Task 12 are **out of scope** and stay unchecked. Nothing in scope depends on them. `GET /api/db/ping` exists; `server/store.js` does not. Review-dialog click-through is blocked by Base44 login.
 
 ---
 
@@ -186,8 +186,8 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 - [x] Each of the four cases produces its reason code (`SEND_GATE_NOT_MET`, `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`)
 - [x] Refused handoff records zero emails
 - [x] Client-supplied elapsed and confirmedIds do not bypass the gate
-- [ ] Live adapter `requestHandoff` is `{ method: "POST", path: "/api/sessions/:sessionId/handoff" }` (still `null`)
-- [ ] Refusal `reasons` are `{ code, message }` objects (`BlockedHandoffAlert` / mock); server currently returns code strings
+- [x] Live adapter `requestHandoff` is `{ method: "POST", path: "/api/sessions/:sessionId/handoff" }` (Task 8b)
+- [x] Refusal `reasons` are `{ code, message }` objects (`BlockedHandoffAlert` / mock) (Task 7b)
 
 **Verification:**
 - [x] Tests pass: `node --test server/test/handoff-gate.test.js`
@@ -199,7 +199,7 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Files present:**
 - `server/handoff.js`, `server/clock.js`, wired from `server/index.js`
 - `server/test/handoff-gate.test.js`
-- `src/api/liveWorkspace.js` (`requestHandoff` still null)
+- `src/api/liveWorkspace.js` (`requestHandoff` wired in Task 8b)
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -217,9 +217,9 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 **Verification:**
 - [x] Tests pass: `node --test server/test/send.test.js`
-- [ ] Build succeeds: `npm run build` (deps `pdf-lib`, `nodemailer`, `postgres` are in `package.json`; install if missing locally)
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: open the stamped PDF and see the presenting-problem answer
-- [ ] Live UI path uses the server handoff (blocked until Task 7 live-adapter glue)
+- [x] Live UI path uses the server handoff (Task 8b)
 
 **Dependencies:** Task 7
 
@@ -237,9 +237,69 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 - [x] Focused handoff-gate and send tests pass
 - [x] Mock gate uses `SEND_GATE_NOT_MET`
-- [ ] Live handoff wired and shows refusal reasons, then one send at or after 45:00
-- [ ] Full `node --test` and `npm run build` after install
+- [x] Live handoff wired and shows refusal reasons, then one send at or after 45:00 (Tasks 7b and 8b; dialog click-through blocked by Base44 login)
+- [x] Full `node --test` and `npm run build` after install
 - [ ] Review with human before sponsor integrations
+
+---
+
+## Task 7b: Refusal reasons are `{ code, message }`
+
+**Description:** `handoffReasons` returns objects the review alert can print, not bare code strings. Messages match the mock sentences. The 45-minute message always says 45, because that is the server clock rule. Client `elapsedSeconds` and `plannedMinutes` stay ignored. No PDF and no mailer on a refusal.
+
+**Acceptance criteria:**
+- [x] 44:59 returns one reason `{ code: "SEND_GATE_NOT_MET", message: "At least 45 minutes are required before handoff." }`; 45:00 returns `[]`
+- [x] Empty answers and a blank therapist email return all four codes, in clock, required, safety, recipient order, each with a `message` string
+- [x] `REQUIRED_UNCONFIRMED` message is `"{n} required question(s) are not clinician-confirmed."`; safety message is `"A required safety item is unresolved."`; recipient message is `"No therapist recipient is assigned."`
+- [x] HTTP handoff of a new session returns those objects and sends no email
+
+**Verification:**
+- [x] Tests pass: `node --test server/test/handoff-gate.test.js`
+- [x] Build succeeds: `node --check server/handoff.js`
+
+**Dependencies:** Task 7. Not Task 10 or Task 12.
+
+**Files likely touched:**
+- `server/handoff.js`
+- `server/test/handoff-gate.test.js`
+
+**Estimated scope:** Small: 1–2 files
+
+---
+
+## Task 8b: Live adapter posts handoff
+
+**Description:** Set `workspaceEndpoints.requestHandoff` to `POST /api/sessions/:sessionId/handoff`. An allowed handoff body includes `to`, the therapist email stored on the session. A forged `therapistEmail` in the POST does not change `to` or the mailed recipient. The review success screen names `to`. It keeps the demo disclaimer only when the response has `demo: true`.
+
+**Acceptance criteria:**
+- [x] `workspaceEndpoints.requestHandoff` is `{ method: "POST", path: "/api/sessions/:sessionId/handoff" }`
+- [x] An allowed send returns `{ allowed: true, sent: true, duplicate: false, to: "therapist@example.com" }` even if the body says `therapistEmail: "fake@example.com"`
+- [x] A repeat still sends nothing new and still names the stored therapist
+- [x] Live success copy does not say that no email or PDF was generated
+
+**Verification:**
+- [x] Tests pass: `node --test server/test/handoff-gate.test.js`
+- [x] Build succeeds: `npm run build`
+- [ ] Manual check: review dialog shows a refusal message, then one allowed send names the stored therapist. **Blocked:** opening `/app/workspace` redirects to `https://app.base44.com/` before the review dialog exists. Landing at `http://localhost:5173/` does load.
+
+**Dependencies:** Tasks 7b and 8. Not Task 10 or Task 12.
+
+**Files likely touched:**
+- `src/api/liveWorkspace.js`
+- `src/components/workspace/ReviewModal.jsx`
+- `server/handoff.js`
+- `server/test/handoff-gate.test.js`
+
+**Estimated scope:** Small: 3–4 files
+
+---
+
+## Checkpoint: After Tasks 7b–8b
+
+- [x] `node --test server/test/handoff-gate.test.js` passes
+- [x] `npm run test:server` and `npm run build` pass (`node --test`: 95 passed)
+- [x] Review alert can print each refusal message (server returns `message`; `BlockedHandoffAlert` prints it). Dialog not opened in the browser.
+- [ ] Human review before Task 10 or Task 12 (both stay deferred)
 
 ---
 
@@ -481,7 +541,9 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ---
 
-## Task 10: Full Scribe transcript file (not this slice)
+## Task 10: Full Scribe transcript file — OUT OF SCOPE
+
+**Status:** Deferred. Do not implement. No in-scope task depends on this. Task 9c uses Task 11’s committed lines.
 
 **Description:** Normalize a recorded full ElevenLabs Scribe transcript into `{ t, speaker, text }` lines. Not required for Tasks 9a, 9b, or 9c. Task 11’s committed lines are already that shape. Leave this until a transcript file is actually an input.
 
@@ -550,7 +612,9 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ---
 
-## Task 12: Tiger stores the sent packet
+## Task 12: Tiger stores the sent packet — OUT OF SCOPE
+
+**Status:** Deferred. Do not implement. This task depends on Tasks 7 and 8. Nothing in scope depends on it. The demo checkpoint’s Tiger row stays blocked here.
 
 **Description:** After Task 8 succeeds, insert one session row (case id, therapist, PDF bytes, `sent_at`) and nudge rows. No raw audio and no full transcript. A refused handoff writes nothing. Missing `DATABASE_URL` skips the insert.
 
@@ -590,8 +654,8 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Checkpoint: Demo
 
-- [ ] `node --test` passes after install
+- [x] `node --test` passes after install (95 tests)
 - [ ] Synthetic path: fixture transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Live handoff works end-to-end. Task 10 is not required.
-- [ ] Tiger row when `DATABASE_URL` is set (ping alone is not enough)
+- [ ] Tiger row when `DATABASE_URL` is set — **blocked by Task 12 (out of scope)**; ping alone is not this row
 - [ ] Human approves before a live microphone, real Scribe session, or a real inbox

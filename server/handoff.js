@@ -12,11 +12,23 @@ export function handoffReasons(record, now) {
   const confirmed = q => record.answers?.[q.id]?.status === 'confirmed' &&
     typeof record.answers[q.id].answer === 'string' && record.answers[q.id].answer.trim().length > 0;
   const reasons = [];
-  if (clockStatus(record.startedAt, now) !== 'met') reasons.push('SEND_GATE_NOT_MET');
-  if (questions.some(q => q.required && !confirmed(q))) reasons.push('REQUIRED_UNCONFIRMED');
-  if (questions.some(q => q.safety && !confirmed(q))) reasons.push('SAFETY_UNRESOLVED');
+  const missingRequired = questions.filter(q => q.required && !confirmed(q));
+  if (clockStatus(record.startedAt, now) !== 'met') {
+    reasons.push({ code: 'SEND_GATE_NOT_MET', message: 'At least 45 minutes are required before handoff.' });
+  }
+  if (missingRequired.length) {
+    reasons.push({
+      code: 'REQUIRED_UNCONFIRMED',
+      message: `${missingRequired.length} required question(s) are not clinician-confirmed.`,
+    });
+  }
+  if (questions.some(q => q.safety && !confirmed(q))) {
+    reasons.push({ code: 'SAFETY_UNRESOLVED', message: 'A required safety item is unresolved.' });
+  }
   if (typeof record.therapist?.email !== 'string' ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.therapist.email)) reasons.push('NO_RECIPIENT');
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.therapist.email)) {
+    reasons.push({ code: 'NO_RECIPIENT', message: 'No therapist recipient is assigned.' });
+  }
   return reasons;
 }
 
@@ -33,7 +45,7 @@ export async function handleHandoff(method, pathname, _body, now, { mailer } = {
   try {
     const pdfBytes = await renderIntakePdf(record);
     const result = await sendPacketOnce({ sessionId: record.id, to: record.therapist.email, pdfBytes, mailer });
-    return { status: 200, body: { allowed: true, sent: result.sent, duplicate: result.duplicate } };
+    return { status: 200, body: { allowed: true, sent: result.sent, duplicate: result.duplicate, to: record.therapist.email } };
   } catch {
     return { status: 502, body: { allowed: false, sent: false, code: 'HANDOFF_FAILED' } };
   }
