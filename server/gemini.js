@@ -17,6 +17,25 @@ export function buildRequestText(lines, questions) {
   ].join("\n");
 }
 
+function buildFinalRequestText(lines, questions, drafts) {
+  const questionLines = questions.map((question) => `${question.id}: ${question.label}`).join("\n");
+  const transcriptLines = lines.map((line) => `${line.speaker}: ${line.text}`).join("\n");
+  const draftLines = (drafts ?? []).map((draft) => `${draft.fieldId}: ${draft.answer ?? ""}`).join("\n");
+  return [
+    "Fill a blank or replace a draft when the full transcript supports a quote.",
+    "Omit a question when nothing should change.",
+    "Posted drafts are context only.",
+    "Return JSON {\"drafts\":[{\"fieldId\",\"status\",\"answer\",\"evidence\",\"t\"}]}.",
+    "evidence must be a double-quoted substring of the transcript.",
+    "Questions:",
+    questionLines,
+    "Current drafts:",
+    draftLines,
+    "Transcript:",
+    transcriptLines,
+  ].join("\n");
+}
+
 function draftsFromBody(body) {
   const parts = body?.candidates?.[0]?.content?.parts ?? [];
   const text = parts.map((part) => part.text ?? "").join("");
@@ -44,7 +63,11 @@ async function fetchGemini(text, options) {
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ parts: [{ text }] }],
-      generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
+      // shortcut: thinkingBudget 1024 on the final pass only; commit stays at 0
+      generationConfig: {
+        responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: options.final ? 1024 : 0 },
+      },
     }),
   });
   if (!res.ok) fail("GEMINI_HTTP", "Gemini request failed");
@@ -55,7 +78,12 @@ export async function draftFromTranscript(lines, questions, options = {}) {
   if (options.synthetic === false && process.env.ALLOW_PHI !== "1") {
     fail("PHI_REFUSED", "Non-synthetic transcripts require ALLOW_PHI=1");
   }
-  const body = options.body ?? await fetchGemini(buildRequestText(lines, questions), options);
+  const text = options.final
+    ? buildFinalRequestText(lines, questions, options.contextDrafts)
+    : buildRequestText(lines, questions);
+  const body = options.body ?? await fetchGemini(text, options);
   const fieldIds = new Set(questions.map((question) => question.id));
-  return applyDrafts(draftsFromBody(body), lines, fieldIds);
+  const raw = draftsFromBody(body);
+  const drafts = options.final ? raw.filter((draft) => fieldIds.has(draft.fieldId)) : raw;
+  return applyDrafts(drafts, lines, fieldIds);
 }

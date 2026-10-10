@@ -169,7 +169,7 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 - [x] Task 9c-2: Live session transcript starts empty
 - [x] Task 9c-3: Commit response includes grounded drafts
 - [x] Task 9c-4: Form paints those drafts immediately
-- [ ] Task 9c-5: Final Gemini pass over the full transcript
+- [x] Task 9c-5: Final Gemini pass over the full transcript
 - [ ] Task 9c-6: Review applies that pass without clearing omissions
 
 ### Checkpoint: After Tasks 9c-1 and 9c-2

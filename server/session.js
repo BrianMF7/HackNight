@@ -111,7 +111,29 @@ function recordedGeminiBody() {
   return JSON.parse(readFileSync(new URL("./fixtures/gemini-ramble-response.json", import.meta.url), "utf8"));
 }
 
-async function handleDrafts(rawId) {
+function postedDrafts(record, drafts) {
+  const openIds = new Set(openQuestions(record).map((question) => question.id));
+  if (!Array.isArray(drafts)) return [];
+  return drafts.filter((draft) => draft && openIds.has(draft.fieldId));
+}
+
+async function finalPass(record, body, fetchImpl) {
+  if (record.transcript.length === 0) return { status: 200, body: { drafts: [] } };
+  try {
+    const drafts = await draftFromTranscript(record.transcript, openQuestions(record), {
+      synthetic: false,
+      fetch: fetchImpl,
+      final: true,
+      contextDrafts: postedDrafts(record, body?.drafts),
+    });
+    return { status: 200, body: { drafts } };
+  } catch (err) {
+    if (err.code !== "PHI_REFUSED" && err.code !== "GEMINI_HTTP") throw err;
+    return { status: 200, body: { drafts: [], code: err.code } };
+  }
+}
+
+async function handleDrafts(rawId, body, fetchImpl) {
   let sessionId;
   try {
     sessionId = decodeURIComponent(rawId);
@@ -120,6 +142,7 @@ async function handleDrafts(rawId) {
   }
   const record = sessions.get(sessionId);
   if (!record) return notFound();
+  if (record.live && body?.pass === "final") return finalPass(record, body, fetchImpl);
   // shortcut: recorded fixture only; a synthetic:false body is ignored and Gemini is not called.
   const grounded = await draftFromTranscript(record.transcript, questionList(getTemplate(record.templateId)), {
     synthetic: true,
@@ -185,7 +208,7 @@ export async function handleSession(method, pathname, body, now, fetchImpl) {
   const eventsMatch = method === "GET" && /^\/api\/sessions\/([^/]+)\/events$/.exec(pathname);
   if (eventsMatch) return sessionPart(eventsMatch[1], "events");
   const draftsMatch = method === "POST" && /^\/api\/sessions\/([^/]+)\/drafts$/.exec(pathname);
-  if (draftsMatch) return handleDrafts(draftsMatch[1]);
+  if (draftsMatch) return handleDrafts(draftsMatch[1], body, fetchImpl);
   const lineMatch = method === "POST" && /^\/api\/sessions\/([^/]+)\/transcript-lines$/.exec(pathname);
   if (lineMatch) return appendTranscriptLine(lineMatch[1], body, fetchImpl);
   return null;

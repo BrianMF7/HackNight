@@ -390,3 +390,209 @@ test("a refused or failed live draft stores the line and does not retry, and non
     await live.close();
   }
 });
+
+const LINE_TWO = "It started about three months ago.";
+const POSTED_DRAFT = "Earlier note about feeling overwhelmed";
+
+function postDrafts(url, id, body) {
+  return fetch(`${url}/api/sessions/${id}/drafts`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+}
+
+function mixedFinalBody() {
+  return {
+    candidates: [{
+      content: {
+        parts: [{
+          text: JSON.stringify({
+            drafts: [
+              {
+                fieldId: "AIQ-001",
+                status: "draft",
+                answer: "Overwhelmed and anxious",
+                evidence: `"${LIVE_QUOTE}"`,
+                t: 6,
+              },
+              {
+                fieldId: "SUB-001",
+                status: "draft",
+                answer: "Daily chest pain and no sleep.",
+                evidence: "\"I have chest pain and I never sleep.\"",
+                t: 1,
+              },
+              {
+                fieldId: "AIQ-002",
+                status: "draft",
+                answer: "About three months ago",
+                evidence: `"${LIVE_QUOTE}"`,
+                t: 12,
+              },
+            ],
+          }),
+        }],
+      },
+    }],
+  };
+}
+
+async function storeTwoLines(url, id) {
+  const line1 = { t: 6, speaker: "Patient", text: LIVE_QUOTE };
+  const line2 = { t: 12, speaker: "Patient", text: LINE_TWO };
+  assert.equal((await appendLine(url, id, line1)).status, 200);
+  assert.equal((await appendLine(url, id, line2)).status, 200);
+  return [line1, line2];
+}
+
+test("a final pass grounds the injected body with thinkingBudget 1024 and both lines", async () => {
+  const sent = [];
+  const live = await listen(async (url, init) => {
+    sent.push({ url, init });
+    return { ok: true, json: async () => groundedBody(LIVE_QUOTE) };
+  });
+  try {
+    const id = await createSession(live.base, true);
+    const confirmed = await fetch(`${live.base}/api/sessions/${id}/actions`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ fieldId: "AIQ-002", action: "confirm", answer: "About three months ago" }),
+    });
+    assert.equal(confirmed.status, 200);
+    await withPhi(false, async () => {
+      await storeTwoLines(live.base, id);
+    });
+    assert.equal(sent.length, 0);
+    await withPhi(true, async () => {
+      const res = await postDrafts(live.base, id, {
+        pass: "final",
+        drafts: [
+          { fieldId: "AIQ-001", status: "draft", answer: POSTED_DRAFT, evidence: `"${LIVE_QUOTE}"` },
+          { fieldId: "AIQ-002", status: "draft", answer: "confirmed leak", evidence: "\"nope\"" },
+        ],
+      });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.drafts.length, 1);
+      assert.equal(body.drafts[0].fieldId, "AIQ-001");
+      assert.equal(body.drafts[0].evidence.includes(LIVE_QUOTE), true);
+      assert.equal(sent.length, 1);
+      assert.match(String(sent[0].url), /gemini-2\.5-flash:generateContent/);
+      const request = JSON.parse(sent[0].init.body);
+      assert.equal(request.tools, undefined);
+      assert.equal(request.generationConfig.thinkingConfig.thinkingBudget, 1024);
+      const prompt = request.contents[0].parts[0].text;
+      assert.equal(prompt.includes(LIVE_QUOTE), true);
+      assert.equal(prompt.includes(LINE_TWO), true);
+      assert.equal(prompt.includes(POSTED_DRAFT), true);
+      assert.equal(prompt.includes("replace a draft"), true);
+      assert.equal(prompt.includes("nothing should change"), true);
+      assert.equal(prompt.includes("context only"), true);
+      assert.equal(prompt.includes("AIQ-002"), false);
+      assert.equal(prompt.includes("confirmed leak"), false);
+      assert.doesNotMatch(prompt, /diagnos(?:is|e|tic)\s+code/i);
+      assert.doesNotMatch(prompt, /\bICD(?:-\d+)?\b/);
+      assert.doesNotMatch(prompt, /\bDSM(?:-?\d+)?\b/);
+
+      const extra = await appendLine(live.base, id, { t: 20, speaker: "Patient", text: "Sleep has been rough." });
+      assert.equal(extra.status, 200);
+      assert.equal(sent.length, 2);
+      const commit = JSON.parse(sent[1].init.body);
+      assert.equal(commit.generationConfig.thinkingConfig.thinkingBudget, 0);
+    });
+  } finally {
+    await live.close();
+  }
+});
+
+test("a final pass drops an invented quote and a confirmed field id", async () => {
+  const live = await listen(async () => ({ ok: true, json: async () => mixedFinalBody() }));
+  try {
+    const id = await createSession(live.base, true);
+    const confirmed = await fetch(`${live.base}/api/sessions/${id}/actions`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ fieldId: "AIQ-002", action: "confirm", answer: "About three months ago" }),
+    });
+    assert.equal(confirmed.status, 200);
+    await withPhi(false, async () => {
+      await storeTwoLines(live.base, id);
+    });
+    await withPhi(true, async () => {
+      const res = await postDrafts(live.base, id, { pass: "final", drafts: [] });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.drafts.length, 1);
+      assert.equal(body.drafts[0].fieldId, "AIQ-001");
+      assert.equal(body.drafts.some((draft) => String(draft.evidence).includes("chest pain")), false);
+      assert.equal(body.drafts.some((draft) => draft.fieldId === "SUB-001"), false);
+      assert.equal(body.drafts.some((draft) => draft.fieldId === "AIQ-002"), false);
+    });
+  } finally {
+    await live.close();
+  }
+});
+
+test("an empty final pass does not fetch, and a non-live drafts post stays recorded", async () => {
+  let calls = 0;
+  const live = await listen(async () => {
+    calls += 1;
+    throw new Error("Gemini fetch was called");
+  });
+  try {
+    await withPhi(true, async () => {
+      const id = await createSession(live.base, true);
+      const res = await postDrafts(live.base, id, {
+        pass: "final",
+        drafts: [{ fieldId: "AIQ-001", answer: POSTED_DRAFT }],
+      });
+      assert.equal(res.status, 200);
+      assert.deepEqual(await res.json(), { drafts: [] });
+      assert.equal(calls, 0);
+    });
+
+    const recordedId = await createSession(live.base, false);
+    const drafts = await postDrafts(live.base, recordedId, {});
+    assert.equal(drafts.status, 200);
+    const events = await drafts.json();
+    assert.equal(events.length, 1);
+    assert.equal(events[0].fieldId, "AIQ-001");
+    assert.equal(calls, 0);
+  } finally {
+    await live.close();
+  }
+});
+
+test("a refused or failed final pass returns empty drafts and does not retry", async () => {
+  let calls = 0;
+  const live = await listen(async () => {
+    calls += 1;
+    return { ok: false, status: 500, json: async () => ({}) };
+  });
+  try {
+    const id = await createSession(live.base, true);
+    await withPhi(false, async () => {
+      await storeTwoLines(live.base, id);
+    });
+    assert.equal(calls, 0);
+    await withPhi(false, async () => {
+      const res = await postDrafts(live.base, id, { pass: "final", drafts: [] });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.deepEqual(body.drafts, []);
+      assert.equal(body.code, "PHI_REFUSED");
+      assert.equal(calls, 0);
+    });
+    await withPhi(true, async () => {
+      const res = await postDrafts(live.base, id, { pass: "final", drafts: [] });
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.deepEqual(body.drafts, []);
+      assert.equal(body.code, "GEMINI_HTTP");
+      assert.equal(calls, 1);
+    });
+  } finally {
+    await live.close();
+  }
+});

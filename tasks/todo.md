@@ -417,13 +417,13 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** When review asks for it, `POST /api/sessions/:sessionId/drafts` with `{ pass: "final", drafts }` runs one `gemini-2.5-flash` `generateContent` on the live session’s stored transcript. The prompt includes every live line, every question that is not confirmed in `record.answers`, and the posted drafts as context only. It tells the model to fill a blank or replace a draft when the full transcript supports a quote, and to omit a question when nothing should change. `generationConfig.thinkingConfig.thinkingBudget` is 1024 on this call. The commit path stays at 0. No tool loop and no second model. Output goes through `ground`. Confirmed field ids are removed before the prompt and dropped from the result. An empty transcript returns `{ drafts: [] }` and does not fetch. `synthetic: false`, so `ALLOW_PHI` is required; if it is unset or the fetch fails, return `{ drafts: [], code }` and do not retry. `POST .../drafts` without `pass: "final"` is unchanged: recorded fixture body, no network. This route is not called from `transcript-lines`.
 
 **Acceptance criteria:**
-- [ ] A live session with two stored lines and `{ pass: "final" }` returns grounded drafts from the injected body. The prompt contains both lines and the posted draft text, excludes a confirmed field id, and has no diagnosis-code instruction. The request JSON has `thinkingBudget` 1024.
-- [ ] An invented quote in that body is absent from the result, and a confirmed field id in the model output is absent too
-- [ ] An empty live transcript returns `{ drafts: [] }` and does not fetch. `POST .../drafts` without `pass: "final"` on a non-live session still returns the recorded AIQ-001 draft and does not fetch
+- [x] A live session with two stored lines and `{ pass: "final" }` returns grounded drafts from the injected body. The prompt contains both lines and the posted draft text, excludes a confirmed field id, and has no diagnosis-code instruction. The request JSON has `thinkingBudget` 1024.
+- [x] An invented quote in that body is absent from the result, and a confirmed field id in the model output is absent too
+- [x] An empty live transcript returns `{ drafts: [] }` and does not fetch. `POST .../drafts` without `pass: "final"` on a non-live session still returns the recorded AIQ-001 draft and does not fetch
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js`
-- [ ] Build succeeds: `node --check server/gemini.js && node --check server/session.js && node --check server/index.js`
+- [x] Tests pass: `node --test server/test/gemini.test.js`
+- [x] Build succeeds: `node --check server/gemini.js && node --check server/session.js && node --check server/index.js`
 - [ ] Manual check: deferred until 9c-6
 
 **Dependencies:** Task 9c-3
