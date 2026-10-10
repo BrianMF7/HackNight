@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { handleActions } from "./actions.js";
+import { handleHandoff } from "./handoff.js";
 import { handleSession } from "./session.js";
 import { createScribeToken } from "./stt.js";
 import { getTemplate, listTemplates } from "./template.js";
@@ -13,6 +14,7 @@ export function createServer({
   origin = process.env.CORS_ORIGIN || DEFAULT_ORIGIN,
   elevenLabsKey = process.env.ELEVENLABS_API_KEY || "",
   fetchImpl = fetch,
+  handoffMailer = null,
 } = {}) {
   const routes = {
     "GET /api/ping": (_req, res) => json(res, 200, { ok: true }),
@@ -75,6 +77,12 @@ export function createServer({
     const sessionResponse = await handleSession(req.method, url.pathname, body, Date.now());
     if (sessionResponse) {
       json(res, sessionResponse.status, sessionResponse.body);
+      return;
+    }
+
+    const handoffResponse = await handleHandoff(req.method, url.pathname, body, Date.now(), { mailer: handoffMailer });
+    if (handoffResponse) {
+      json(res, handoffResponse.status, handoffResponse.body);
       return;
     }
 
