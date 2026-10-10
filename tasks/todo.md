@@ -145,13 +145,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** Retain sets `draft_retained` and `sent: false`. Discard deletes the session. Neither renders a PDF or calls the mailer. Discard is the single call the UI makes after its own second confirmation.
 
 **Acceptance criteria:**
-- [ ] Keep returns `{ ok: true, status: "draft_retained", sent: false }` and no mailer call
-- [ ] Discard clears the session and still does not email
-- [ ] Both leave the mailer at zero messages when elapsed is already `met`
+- [x] Keep returns `{ ok: true, status: "draft_retained", sent: false }` and no mailer call
+- [x] Discard clears the session and still does not email
+- [ ] Both leave the mailer at zero messages when elapsed is already `met` (nothing is marked sent at 46:00 today; Task 8 adds the fake-mailer zero-count assert to `disconnect.test.js`)
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/disconnect.test.js`
-- [ ] Build succeeds: `node --check server/disconnect.js`
+- [x] Tests pass: `node --test server/test/disconnect.test.js`
+- [x] Build succeeds: `node --check server/disconnect.js`
 - [ ] Manual check: keep and discard both leave sent false
 
 **Dependencies:** Task 5

@@ -21,8 +21,8 @@ export const workspaceEndpoints = {
   getTranscript: { method: "GET", path: "/api/sessions/:sessionId/transcript" },
   getEvents: { method: "GET", path: "/api/sessions/:sessionId/events" },
   recordClinicianAction: { method: "POST", path: "/api/sessions/:sessionId/actions" },
-  retainDraft: null,
-  discardDraft: null,
+  retainDraft: { method: "POST", path: "/api/sessions/:sessionId/retain" },
+  discardDraft: { method: "POST", path: "/api/sessions/:sessionId/discard" },
   requestHandoff: null,
   playQuestion: null, // backend-owned ElevenLabs prompt audio
 };
