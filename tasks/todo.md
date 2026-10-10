@@ -665,15 +665,15 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** `POST /api/sessions/:sessionId/call` creates one private Daily room per live session (`enable_chat`, `enable_knocking`, `enable_prejoin_ui`, `exp` two hours ahead) and an owner meeting token tied to that `room_name`, through Daily's REST API with `fetch`. It returns `{ roomUrl, token }`. The room URL is the patient link: the patient opens it without a token and knocks. Repeat or concurrent requests share one room. `DAILY_API_KEY` stays on the server. Plan: `tasks/video-plan.md`.
 
 **Acceptance criteria:**
-- [ ] The room request is `privacy: "private"` with chat, knocking, and prejoin on and an `exp`; the token request is `is_owner: true` for that room with the same `exp`
-- [ ] A repeat request and two concurrent requests create one room
-- [ ] Missing `DAILY_API_KEY` is 503 `NO_VIDEO_KEY`, a synthetic session is 422 `NOT_LIVE`, unknown ids are 404, and none of them call Daily
-- [ ] A Daily failure is 502 `VIDEO_FAILED`, and a retry can still create the room
-- [ ] The API key never appears in a response
+- [x] The room request is `privacy: "private"` with chat, knocking, and prejoin on and an `exp`; the token request is `is_owner: true` for that room with the same `exp`
+- [x] A repeat request and two concurrent requests create one room
+- [x] Missing `DAILY_API_KEY` is 503 `NO_VIDEO_KEY`, a synthetic session is 422 `NOT_LIVE`, unknown ids are 404, and none of them call Daily
+- [x] A Daily failure is 502 `VIDEO_FAILED`, and a retry can still create the room
+- [x] The API key never appears in a response
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/video.test.js`
-- [ ] Build succeeds: `node --check server/video.js && node --check server/index.js`
+- [x] Tests pass: `node --test server/test/video.test.js`
+- [x] Build succeeds: `node --check server/video.js && node --check server/index.js`
 - [ ] Manual check: with a real `DAILY_API_KEY`, the returned room URL opens Daily's prejoin screen
 
 **Dependencies:** Task 11 (live sessions)

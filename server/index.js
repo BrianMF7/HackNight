@@ -8,6 +8,7 @@ import { handleHandoff } from "./handoff.js";
 import { handleSession } from "./session.js";
 import { createScribeToken } from "./stt.js";
 import { getTemplate, listTemplates } from "./template.js";
+import { handleCall } from "./video.js";
 
 const DEFAULT_ORIGIN = "http://localhost:5173";
 
@@ -21,6 +22,7 @@ export function createServer({
   token = process.env.BACKEND_TOKEN || "",
   origin = process.env.CORS_ORIGIN || DEFAULT_ORIGIN,
   elevenLabsKey = process.env.ELEVENLABS_API_KEY || "",
+  dailyKey = process.env.DAILY_API_KEY || "",
   fetchImpl = fetch,
   handoffMailer = null,
   sql = createSql(),
@@ -131,6 +133,12 @@ export function createServer({
     const disconnectResponse = handleDisconnect(req.method, url.pathname);
     if (disconnectResponse) {
       json(res, disconnectResponse.status, disconnectResponse.body);
+      return;
+    }
+
+    const callResponse = await handleCall(req.method, url.pathname, now, { apiKey: dailyKey, fetchImpl });
+    if (callResponse) {
+      json(res, callResponse.status, callResponse.body);
       return;
     }
 
