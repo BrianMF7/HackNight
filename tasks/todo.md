@@ -6,7 +6,7 @@ Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Chec
 
 Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
-**Current slice:** Wire live `requestHandoff` (still `null`) and reason `{ code, message }` objects for the review alert, then Task 12. Tasks 1–9c and 11 are in the tree. Task 4 and Tasks 6–8 server modules landed from teammate merges. Task 10 is absent. `GET /api/db/ping` exists; `server/store.js` does not.
+**Current slice:** Wire live `requestHandoff` (still `null`) and reason `{ code, message }` objects for the review alert, then Task 12. Tasks 1–9c, 10, and 11 are in the tree. Task 4 and Tasks 6–8 server modules landed from teammate merges. Task 10 normalizes a recorded Scribe file and is not on the live path. `GET /api/db/ping` exists; `server/store.js` does not.
 
 ---
 
@@ -485,16 +485,16 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 **Description:** Normalize a recorded full ElevenLabs Scribe transcript into `{ t, speaker, text }` lines. Not required for Tasks 9a, 9b, or 9c. Task 11’s committed lines are already that shape. Leave this until a transcript file is actually an input.
 
-**Status in tree:** Not present. No `server/scribeTranscript.js`, fixture, or test. Brian’s branch added Tiger ping, not this file.
+**Status in tree:** `server/scribeTranscript.js` normalizes a recorded Scribe `words` list. It is not wired to a route.
 
 **Acceptance criteria:**
-- [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
-- [ ] An empty Scribe payload becomes no lines
-- [ ] Quotes from those lines pass through Task 3 `ground`
+- [x] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
+- [x] An empty Scribe payload becomes no lines
+- [x] Quotes from those lines pass through Task 3 `ground`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/scribe-transcript.test.js`
-- [ ] Build succeeds: `node --check server/scribeTranscript.js`
+- [x] Tests pass: `node --test server/test/scribe-transcript.test.js`
+- [x] Build succeeds: `node --check server/scribeTranscript.js`
 
 **Dependencies:** Task 3. Not Tasks 9c-1–9c-6.
 

@@ -199,7 +199,7 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 ### Later, not this slice
 
 - [ ] Live handoff glue: set `workspaceEndpoints.requestHandoff` and return `{ code, message }` reasons the review alert prints
-- [ ] Task 10: Full Scribe transcript file (not in the tree; not required for 9c)
+- [x] Task 10: Full Scribe transcript file (normalizer only; not required for 9c)
 - [ ] Task 12: Tiger stores the sent packet (`server/store.js` absent; `server/db.js` + `GET /api/db/ping` already land connectivity)
 
 ### Checkpoint: Demo

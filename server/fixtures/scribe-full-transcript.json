@@ -1,0 +1,30 @@
+{
+  "language_code": "en",
+  "language_probability": 0.98,
+  "text": "Do you drink alcohol? A glass of wine, maybe twice a week.",
+  "words": [
+    { "text": "A", "start": 6, "end": 6.2, "type": "word", "speaker_id": "speaker_1", "logprob": -0.08 },
+    { "text": " ", "start": 6.2, "end": 6.24, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "glass", "start": 6.24, "end": 6.5, "type": "word", "speaker_id": "speaker_1", "logprob": -0.05 },
+    { "text": " ", "start": 6.5, "end": 6.54, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "of", "start": 6.54, "end": 6.7, "type": "word", "speaker_id": "speaker_1", "logprob": -0.04 },
+    { "text": " ", "start": 6.7, "end": 6.74, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "wine,", "start": 6.74, "end": 7.1, "type": "word", "speaker_id": "speaker_1", "logprob": -0.06 },
+    { "text": " ", "start": 7.1, "end": 7.14, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "maybe", "start": 7.14, "end": 7.4, "type": "word", "speaker_id": "speaker_1", "logprob": -0.07 },
+    { "text": " ", "start": 7.4, "end": 7.44, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "twice", "start": 7.44, "end": 7.7, "type": "word", "speaker_id": "speaker_1", "logprob": -0.05 },
+    { "text": " ", "start": 7.7, "end": 7.74, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "a", "start": 7.74, "end": 7.9, "type": "word", "speaker_id": "speaker_1", "logprob": -0.03 },
+    { "text": " ", "start": 7.9, "end": 7.94, "type": "spacing", "speaker_id": "speaker_1", "logprob": 0 },
+    { "text": "week.", "start": 7.94, "end": 8.3, "type": "word", "speaker_id": "speaker_1", "logprob": -0.04 },
+    { "text": "(laughter)", "start": 5.2, "end": 5.8, "type": "audio_event", "speaker_id": "speaker_1", "logprob": -0.2 },
+    { "text": "Do", "start": 0, "end": 0.2, "type": "word", "speaker_id": "speaker_0", "logprob": -0.09 },
+    { "text": " ", "start": 0.2, "end": 0.24, "type": "spacing", "speaker_id": "speaker_0", "logprob": 0 },
+    { "text": "you", "start": 0.24, "end": 0.4, "type": "word", "speaker_id": "speaker_0", "logprob": -0.04 },
+    { "text": " ", "start": 0.4, "end": 0.44, "type": "spacing", "speaker_id": "speaker_0", "logprob": 0 },
+    { "text": "drink", "start": 0.44, "end": 0.7, "type": "word", "speaker_id": "speaker_0", "logprob": -0.05 },
+    { "text": " ", "start": 0.7, "end": 0.74, "type": "spacing", "speaker_id": "speaker_0", "logprob": 0 },
+    { "text": "alcohol?", "start": 0.74, "end": 1.2, "type": "word", "speaker_id": "speaker_0", "logprob": -0.06 }
+  ]
+}
