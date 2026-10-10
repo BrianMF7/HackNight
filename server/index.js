@@ -3,6 +3,7 @@ import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { handleActions } from "./actions.js";
 import { handleDisconnect } from "./disconnect.js";
+import { handleHandoff } from "./handoff.js";
 import { handleSession } from "./session.js";
 import { createScribeToken } from "./stt.js";
 import { getTemplate, listTemplates } from "./template.js";
@@ -20,6 +21,7 @@ export function createServer({
   origin = process.env.CORS_ORIGIN || DEFAULT_ORIGIN,
   elevenLabsKey = process.env.ELEVENLABS_API_KEY || "",
   fetchImpl = fetch,
+  handoffMailer = null,
 } = {}) {
   const origins = parseCorsOrigins(origin);
   const routes = {
@@ -91,6 +93,12 @@ export function createServer({
     }
     if (sessionResponse) {
       json(res, sessionResponse.status, sessionResponse.body);
+      return;
+    }
+
+    const handoffResponse = await handleHandoff(req.method, url.pathname, body, Date.now(), { mailer: handoffMailer });
+    if (handoffResponse) {
+      json(res, handoffResponse.status, handoffResponse.body);
       return;
     }
 
