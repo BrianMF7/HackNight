@@ -5,12 +5,17 @@ import * as ToggleGroupPrimitive from "@radix-ui/react-toggle-group"
 import { cn } from "@/lib/utils"
 import { toggleVariants } from "@/components/ui/toggle"
 
-const ToggleGroupContext = React.createContext({
+/** @typedef {{ variant: "default" | "outline", size: "default" | "sm" | "lg" }} ToggleGroupStyle */
+const ToggleGroupContext = React.createContext(/** @type {ToggleGroupStyle} */ ({
   size: "default",
   variant: "default",
-})
+}))
 
-const ToggleGroup = React.forwardRef(({ className, variant, size, children, ...props }, ref) => (
+const ToggleGroup = React.forwardRef((
+  /** @type {React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Root> & { variant?: "default" | "outline", size?: "default" | "sm" | "lg" }} */
+  { className, variant, size, children, ...props }, 
+  ref
+) => (
   <ToggleGroupPrimitive.Root
     ref={ref}
     className={cn("flex items-center justify-center gap-1", className)}
@@ -23,7 +28,11 @@ const ToggleGroup = React.forwardRef(({ className, variant, size, children, ...p
 
 ToggleGroup.displayName = ToggleGroupPrimitive.Root.displayName
 
-const ToggleGroupItem = React.forwardRef(({ className, children, variant, size, ...props }, ref) => {
+const ToggleGroupItem = React.forwardRef((
+  /** @type {React.ComponentPropsWithoutRef<typeof ToggleGroupPrimitive.Item> & { variant?: "default" | "outline", size?: "default" | "sm" | "lg" }} */
+  { className, children, variant, size, ...props }, 
+  ref
+) => {
   const context = React.useContext(ToggleGroupContext)
 
   return (

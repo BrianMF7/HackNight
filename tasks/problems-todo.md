@@ -199,11 +199,11 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** Same annotation on the remaining menu, overlay, and toggle primitives, including the extra props they already destructure (`side`, `inset`, `align`, `variant`).
 
 **Acceptance criteria:**
-- [ ] Widened check no longer reports these files
-- [ ] Extra props that callers or the component body read are on the props type
+- [x] Widened check no longer reports these files
+- [x] Extra props that callers or the component body read are on the props type
 
 **Verification:**
-- [ ] Widened `tsc` error list no longer names these files
+- [x] Widened `tsc` error list no longer names these files
 
 **Dependencies:** Task 7
 
