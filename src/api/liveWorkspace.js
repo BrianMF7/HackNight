@@ -31,8 +31,8 @@ export const workspaceEndpoints = {
   getSttToken: { method: "POST", path: "/api/stt/token" },
   drafts: { method: "POST", path: "/api/sessions/:sessionId/drafts" },
   recordClinicianAction: { method: "POST", path: "/api/sessions/:sessionId/actions" },
-  retainDraft: null,
-  discardDraft: null,
+  retainDraft: { method: "POST", path: "/api/sessions/:sessionId/retain" },
+  discardDraft: { method: "POST", path: "/api/sessions/:sessionId/discard" },
   requestHandoff: null,
   playQuestion: null,
 };

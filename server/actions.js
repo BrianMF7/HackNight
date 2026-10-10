@@ -1,4 +1,4 @@
-import { getSession } from "./session.js";
+import { findSession } from "./session.js";
 import { getTemplate } from "./template.js";
 
 // Task 7's handoff gate reads record.answers, never the client's list of confirmed ids.
@@ -25,12 +25,7 @@ export function recordClinicianAction(record, { fieldId, action, answer }, templ
 export function handleActions(method, pathname, body, now) {
   const match = method === "POST" && /^\/api\/sessions\/([^/]+)\/actions$/.exec(pathname);
   if (!match) return null;
-  let record;
-  try {
-    record = getSession(decodeURIComponent(match[1]));
-  } catch {
-    record = undefined;
-  }
+  const record = findSession(match[1]);
   if (!record) return fail(404, "NOT_FOUND", "Not found");
   return recordClinicianAction(record, body ?? {}, getTemplate(record.templateId), now);
 }

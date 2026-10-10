@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 import { workspaceEndpoints } from "../../src/api/liveWorkspace.js";
 import { createServer } from "../index.js";
-import { getSession } from "../session.js";
+import { findSession } from "../session.js";
 
 const TOKEN = "test-token";
 const ORIGIN = "http://localhost:5173";
@@ -60,7 +60,7 @@ test("confirm and edit_confirm persist as confirmed on the server session", asyn
   const edited = await act(id, { sessionId: id, fieldId: "AIQ-002", action: "edit_confirm", answer: "About three months ago" });
   assert.equal(edited.status, 200);
 
-  const { answers } = getSession(id);
+  const { answers } = findSession(id);
   assert.equal(answers["AIQ-001"].status, "confirmed");
   assert.equal(answers["AIQ-001"].answer, "Work stress");
   assert.equal(answers["AIQ-001"].action, "confirm");
@@ -76,7 +76,7 @@ test("an edit after confirm clears the confirmation", async () => {
   const res = await act(id, { fieldId: "AIQ-001", action: "edit", answer: "Work and family stress" });
   assert.equal(res.status, 200);
 
-  const stored = getSession(id).answers["AIQ-001"];
+  const stored = findSession(id).answers["AIQ-001"];
   assert.equal(stored.status, "draft");
   assert.equal(stored.answer, "Work and family stress");
   assert.equal(stored.action, "edit");
@@ -88,7 +88,7 @@ test("a safety question cannot be waived and stays unconfirmed", async () => {
     const res = await act(id, { fieldId, action: "waive", answer: "" });
     assert.equal(res.status, 422);
     assert.equal((await res.json()).code, "SAFETY_NOT_WAIVABLE");
-    assert.equal(getSession(id).answers[fieldId], undefined);
+    assert.equal(findSession(id).answers[fieldId], undefined);
   }
 });
 
@@ -102,7 +102,7 @@ test("waive and unknown actions on other questions are refused, as is a non-text
   const res = await act(id, { fieldId: "AIQ-001", action: "confirm", answer: 42 });
   assert.equal(res.status, 422);
   assert.equal((await res.json()).code, "INVALID_ANSWER");
-  assert.deepEqual(getSession(id).answers, {});
+  assert.deepEqual(findSession(id).answers, {});
 });
 
 test("an unknown field is 422 and records nothing", async () => {
@@ -115,7 +115,7 @@ test("an unknown field is 422 and records nothing", async () => {
   const nullBody = await act(id, "null");
   assert.equal(nullBody.status, 422);
   assert.equal((await nullBody.json()).code, "UNKNOWN_FIELD");
-  assert.deepEqual(getSession(id).answers, {});
+  assert.deepEqual(findSession(id).answers, {});
 });
 
 test("an unknown or malformed session id is 404", async () => {

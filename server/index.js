@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
 import { handleActions } from "./actions.js";
+import { handleDisconnect } from "./disconnect.js";
 import { handleSession } from "./session.js";
 import { createScribeToken } from "./stt.js";
 import { getTemplate, listTemplates } from "./template.js";
@@ -80,9 +81,10 @@ export function createServer({
       }
     }
 
+    const now = Date.now();
     let sessionResponse;
     try {
-      sessionResponse = await handleSession(req.method, url.pathname, body, Date.now(), fetchImpl);
+      sessionResponse = await handleSession(req.method, url.pathname, body, now, fetchImpl);
     } catch {
       json(res, 500, { message: "Internal error", code: "INTERNAL" });
       return;
@@ -92,9 +94,15 @@ export function createServer({
       return;
     }
 
-    const actionResponse = handleActions(req.method, url.pathname, body, Date.now());
+    const actionResponse = handleActions(req.method, url.pathname, body, now);
     if (actionResponse) {
       json(res, actionResponse.status, actionResponse.body);
+      return;
+    }
+
+    const disconnectResponse = handleDisconnect(req.method, url.pathname);
+    if (disconnectResponse) {
+      json(res, disconnectResponse.status, disconnectResponse.body);
       return;
     }
 

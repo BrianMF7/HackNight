@@ -43,7 +43,15 @@ export function load(relativePath) {
   return readFileSync(real, "utf8");
 }
 
-export const getSession = (id) => sessions.get(id);
+export function findSession(rawId) {
+  try {
+    return sessions.get(decodeURIComponent(rawId));
+  } catch {
+    return undefined;
+  }
+}
+
+export const deleteSession = (id) => sessions.delete(id);
 
 function notFound() {
   return { status: 404, body: { message: "Not found", code: "NOT_FOUND" } };
