@@ -1,6 +1,7 @@
 // DEMO MODE ONLY. Simulates the shape of the backend's intake-session API.
 // The handoff gate below only MIRRORS the documented backend rules so the UI flow can be reviewed.
 // In live mode the real backend decides; the frontend never overrides it.
+import ApiError from "./ApiError";
 import { adultIntake, allQuestions } from "./templates/adultIntake";
 import { syntheticSession, transcript, events } from "./fixtures/syntheticSession";
 
@@ -45,9 +46,7 @@ export const mockWorkspace = {
 
   // Realtime STT needs live mode + the Node server minting a single-use ElevenLabs token.
   async getSttToken() {
-    const err = new Error("Realtime speech-to-text needs live backend mode.");
-    err.code = "MOCK_MODE";
-    throw err;
+    throw new ApiError("Realtime speech-to-text needs live backend mode.", { code: "MOCK_MODE" });
   },
 
   async appendTranscriptLine() { await delay(50); return { ok: true, demo: true }; },

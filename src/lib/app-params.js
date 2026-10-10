@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { getAccessToken } from '@base44/sdk';
 
 const isNode = typeof window === 'undefined';

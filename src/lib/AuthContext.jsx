@@ -2,7 +2,25 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { appParams } from '@/lib/app-params';
 
-const AuthContext = createContext();
+/**
+ * @typedef {{ email?: string, full_name?: string }} AuthUser
+ * @typedef {{ type: string, message?: string }} AuthErrorInfo
+ * @typedef {{
+ *   user: AuthUser | null,
+ *   isAuthenticated: boolean,
+ *   isLoadingAuth: boolean,
+ *   isLoadingPublicSettings: boolean,
+ *   authError: AuthErrorInfo | null,
+ *   appPublicSettings: object | null,
+ *   authChecked: boolean,
+ *   logout: (shouldRedirect?: boolean) => void,
+ *   navigateToLogin: () => void,
+ *   checkUserAuth: () => Promise<void>,
+ *   checkAppState: () => Promise<void>,
+ * }} AuthState
+ */
+
+const AuthContext = createContext(/** @type {AuthState | undefined} */ (undefined));
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);

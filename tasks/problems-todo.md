@@ -108,14 +108,14 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** Four one-off type holes outside the component pattern.
 
 **Acceptance criteria:**
-- [ ] `import.meta.env` resolves through Vite's client types
-- [ ] `createContext` receives the same `undefined` default the runtime already uses, with the provider value typed
-- [ ] Mock speech-to-text throws `ApiError` with `code: "MOCK_MODE"`
-- [ ] The consent-info headers object is a `Record<string, string>`
+- [x] `import.meta.env` resolves through Vite's client types
+- [x] `createContext` receives the same `undefined` default the runtime already uses, with the provider value typed
+- [x] Mock speech-to-text throws `ApiError` with `code: "MOCK_MODE"`
+- [x] The consent-info headers object is a `Record<string, string>`
 
 **Verification:**
-- [ ] Typecheck no longer reports `app-params.js`, `AuthContext.jsx`, `mockWorkspace.js`, or the headers error in `OAuthConsent.jsx`
-- [ ] `npm run typecheck` exits 0
+- [x] Typecheck no longer reports `app-params.js`, `AuthContext.jsx`, `mockWorkspace.js`, or the headers error in `OAuthConsent.jsx`
+- [x] `npm run typecheck` exits 0
 
 **Dependencies:** Task 4
 
