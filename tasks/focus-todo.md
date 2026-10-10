@@ -15,14 +15,14 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Add the depression evidence rules and a pure scorer. The scorer reads bound criterion ids and either returns the depression focus with a fixed reason sentence or returns nothing. It does not read the transcript and it does not call a model.
 
 **Acceptance criteria:**
-- [ ] `dep-mood` plus `dep-interest` returns `{ id: "depression", reason }` using a sentence defined in the scorer
-- [ ] `dep-mood` alone, `dep-interest` alone, an empty list, or an unknown id returns `null`
-- [ ] Adding `dep-span` to the required pair changes the reason and still returns `depression`
-- [ ] The criteria file states original evidence rules and does not contain DSM-5 criteria prose
+- [x] `dep-mood` plus `dep-interest` returns `{ id: "depression", reason }` using a sentence defined in the scorer
+- [x] `dep-mood` alone, `dep-interest` alone, an empty list, or an unknown id returns `null`
+- [x] Adding `dep-span` to the required pair changes the reason and still returns `depression`
+- [x] The criteria file states original evidence rules and does not contain DSM-5 criteria prose
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-score.test.js`
-- [ ] Build succeeds: `node --check server/focus/criteria.js && node --check server/focus/score.js`
+- [x] Tests pass: `node --test server/test/focus-score.test.js`
+- [x] Build succeeds: `node --check server/focus/criteria.js && node --check server/focus/score.js`
 
 **Dependencies:** None
 
@@ -42,13 +42,13 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Turn model candidates into bindings the scorer can trust. Each kept quote is a substring of the transcript, with the same `...` part rule as `server/ground.js`. Unknown criterion ids and quotes that are not in the transcript are dropped. A candidate with no quote is dropped.
 
 **Acceptance criteria:**
-- [ ] A quote that appears in a transcript line is kept with its `criterionId` and `t`
-- [ ] An invented quote, a missing quote, and an id outside `DEPRESSION_CRITERIA` are absent from the result
-- [ ] A quote split by `...` is kept only when every part appears in the transcript
+- [x] A quote that appears in a transcript line is kept with its `criterionId` and `t`
+- [x] An invented quote, a missing quote, and an id outside `DEPRESSION_CRITERIA` are absent from the result
+- [x] A quote split by `...` is kept only when every part appears in the transcript
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-bind.test.js`
-- [ ] Build succeeds: `node --check server/focus/bind.js`
+- [x] Tests pass: `node --test server/test/focus-bind.test.js`
+- [x] Build succeeds: `node --check server/focus/bind.js`
 
 **Dependencies:** Task 1
 
@@ -67,14 +67,14 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Build the focus-agent request. The prompt asks for criterion ids and quoted evidence only. The parsed result is bindings, then `bindCriteria`, then `scoreFocus` can be applied by the caller. Tests inject `fetch`. Nothing in this task listens on a port.
 
 **Acceptance criteria:**
-- [ ] The request text lists `dep-mood`, `dep-interest`, and `dep-span`, asks for JSON bindings, and does not ask for a diagnosis name or a diagnosis code
-- [ ] A recorded body whose quotes are in the fixture transcript becomes bindings; a focus name in that body is ignored
-- [ ] `synthetic: false` without `ALLOW_PHI=1` refuses before fetch
-- [ ] The request JSON uses `gemini-3.8-flash` and `thinkingLevel` `low`
+- [x] The request text lists `dep-mood`, `dep-interest`, and `dep-span`, asks for JSON bindings, and does not ask for a diagnosis name or a diagnosis code
+- [x] A recorded body whose quotes are in the fixture transcript becomes bindings; a focus name in that body is ignored
+- [x] `synthetic: false` without `ALLOW_PHI=1` refuses before fetch
+- [x] The request JSON uses `gemini-3.8-flash` and `thinkingLevel` `low`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-agent.test.js`
-- [ ] Build succeeds: `node --check server/focus/agent.js`
+- [x] Tests pass: `node --test server/test/focus-agent.test.js`
+- [x] Build succeeds: `node --check server/focus/agent.js`
 
 **Dependencies:** Task 2
 
@@ -94,13 +94,13 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Two saved transcripts stand in for the clinician yes/no the idea doc asks for. The positive one binds the required pair and the scorer surfaces depression. The negative one does not, and the scorer stays quiet. Both go through the recorded agent body and the binder, with fetch injected.
 
 **Acceptance criteria:**
-- [ ] `server/fixtures/focus-positive.json` surfaces `{ id: "depression" }` and every kept quote is a substring of that fixture
-- [ ] `server/fixtures/focus-negative.json` surfaces nothing
-- [ ] Neither fixture is loaded by `POST /api/sessions` or by the form-draft agent
+- [x] `server/fixtures/focus-positive.json` surfaces `{ id: "depression" }` and every kept quote is a substring of that fixture
+- [x] `server/fixtures/focus-negative.json` surfaces nothing
+- [x] Neither fixture is loaded by `POST /api/sessions` or by the form-draft agent
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-agent.test.js`
-- [ ] Build succeeds: `node --check server/focus/agent.js`
+- [x] Tests pass: `node --test server/test/focus-agent.test.js`
+- [x] Build succeeds: `node --check server/focus/agent.js`
 
 **Dependencies:** Task 3
 
@@ -115,9 +115,9 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 
 ## Checkpoint: Agent
 
-- [ ] `node --test server/test/focus-score.test.js server/test/focus-bind.test.js server/test/focus-agent.test.js` passes
-- [ ] Those tests do not open a port and do not call the network
-- [ ] Person 1 has not edited Person 2’s files
+- [x] `node --test server/test/focus-score.test.js server/test/focus-bind.test.js server/test/focus-agent.test.js` passes
+- [x] Those tests do not open a port and do not call the network
+- [x] Person 1 has not edited Person 2’s files
 
 ---
 

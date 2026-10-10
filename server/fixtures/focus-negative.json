@@ -1,0 +1,24 @@
+{
+  "lines": [
+    { "t": 12, "speaker": "Clinician", "text": "How are you sleeping this week?" },
+    { "t": 20, "speaker": "Patient", "text": "I wake up once around three and then fall back asleep." },
+    { "t": 34, "speaker": "Clinician", "text": "How is work going?" },
+    { "t": 41, "speaker": "Patient", "text": "Deadlines are busy, and I still like the projects I am on." }
+  ],
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            { "thought": true, "text": "depression" },
+            {
+              "text": "{\"bindings\":[{\"criterionId\":\"dep-mood\",\"evidence\":\"felt low and hopeless\",\"t\":20},{\"criterionId\":\"dep-interest\",\"evidence\":\"stopped enjoying the evening walks\",\"t\":41},{\"criterionId\":\"dep-interest\",\"evidence\":\"still like the projects\",\"t\":41}],\"focus\":\"depression\",\"id\":\"depression\",\"code\":\"F32.1\"}"
+            }
+          ]
+        },
+        "finishReason": "STOP"
+      }
+    ]
+  }
+}

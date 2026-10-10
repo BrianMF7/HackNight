@@ -1,0 +1,26 @@
+{
+  "lines": [
+    { "t": 40, "speaker": "Clinician", "text": "How has your mood been over these past weeks?" },
+    { "t": 48, "speaker": "Patient", "text": "I have felt low and hopeless most days." },
+    { "t": 61, "speaker": "Clinician", "text": "And the things you usually enjoy?" },
+    { "t": 70, "speaker": "Patient", "text": "I stopped enjoying the evening walks I used to take." },
+    { "t": 88, "speaker": "Clinician", "text": "How long has that been going on?" },
+    { "t": 96, "speaker": "Patient", "text": "It has lasted more than a month, not just a short stretch." }
+  ],
+  "body": {
+    "candidates": [
+      {
+        "content": {
+          "role": "model",
+          "parts": [
+            { "thought": true, "text": "depression" },
+            {
+              "text": "{\"bindings\":[{\"criterionId\":\"dep-mood\",\"evidence\":\"felt low and hopeless\",\"t\":48},{\"criterionId\":\"dep-interest\",\"evidence\":\"stopped enjoying the evening walks\",\"t\":70},{\"criterionId\":\"dep-span\",\"evidence\":\"lasted more than a month\",\"t\":96},{\"criterionId\":\"dep-mood\",\"evidence\":\"I have a diagnosis of depression\",\"t\":1},{\"criterionId\":\"not-a-criterion\",\"evidence\":\"felt low and hopeless\",\"t\":48}],\"focus\":\"depression\",\"id\":\"depression\",\"code\":\"F32.1\"}"
+            }
+          ]
+        },
+        "finishReason": "STOP"
+      }
+    ]
+  }
+}

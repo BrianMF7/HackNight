@@ -1,0 +1,19 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "role": "model",
+        "parts": [
+          {
+            "thought": true,
+            "text": "depression"
+          },
+          {
+            "text": "{\"bindings\":[{\"criterionId\":\"dep-mood\",\"evidence\":\"felt low and hopeless\",\"t\":1},{\"criterionId\":\"dep-interest\",\"evidence\":\"stopped enjoying the walks\",\"t\":2},{\"criterionId\":\"dep-span\",\"evidence\":\"I invented a long span\",\"t\":3}],\"focus\":\"depression\",\"id\":\"depression\",\"code\":\"F32.1\"}"
+          }
+        ]
+      },
+      "finishReason": "STOP"
+    }
+  ]
+}
