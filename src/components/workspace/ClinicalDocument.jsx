@@ -3,6 +3,20 @@ import { adultIntake } from "@/api/templates/adultIntake";
 import QuestionRow from "./QuestionRow";
 
 // Renders the FIXED template as a paged, PDF-like document. Structure never changes per patient.
+/**
+ * @param {{
+ *   session: {
+ *     questionState: (id: string) => { status?: string, answer?: string, category?: string },
+ *     snoozed: { [fieldId: string]: boolean | undefined },
+ *     confirm: (fieldId: string, editedAnswer?: string) => void | Promise<void>,
+ *     saveEdit: (fieldId: string, text: string) => void | Promise<void>,
+ *   },
+ *   highlightId: string | null,
+ *   readOnly?: boolean,
+ *   onPlay: (fieldId: string) => void | Promise<void>,
+ *   pageFilter?: number,
+ * }} props
+ */
 export default function ClinicalDocument({ session, highlightId, readOnly, onPlay, pageFilter }) {
   const pages = pageFilter ? adultIntake.pages.filter((p) => p.page === pageFilter) : adultIntake.pages;
   return (

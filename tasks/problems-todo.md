@@ -86,12 +86,12 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** `AuthLayout` and `ClinicalDocument` mark every destructured prop required. Runtime already skips missing `subtitle`, `footer`, `readOnly`, and `pageFilter`.
 
 **Acceptance criteria:**
-- [ ] `subtitle`, `footer`, and `children` are optional on `AuthLayout`; `icon` and `title` stay required
-- [ ] `readOnly` and `pageFilter` are optional on `ClinicalDocument`; the workspace call typechecks
-- [ ] Rendering of those omitted props is unchanged
+- [x] `subtitle`, `footer`, and `children` are optional on `AuthLayout`; `icon` and `title` stay required
+- [x] `readOnly` and `pageFilter` are optional on `ClinicalDocument`; the workspace call typechecks
+- [x] Rendering of those omitted props is unchanged
 
 **Verification:**
-- [ ] Typecheck no longer reports `AuthLayout.jsx`, `ClinicalDocument.jsx`, `Register.jsx`, `Login.jsx`, `ResetPassword.jsx`, `ForgotPassword.jsx`, `OAuthConsent.jsx` (layout lines), or `Workspace.jsx` (document line)
+- [x] Typecheck no longer reports `AuthLayout.jsx`, `ClinicalDocument.jsx`, `Register.jsx`, `Login.jsx`, `ResetPassword.jsx`, `ForgotPassword.jsx`, `OAuthConsent.jsx` (layout lines), or `Workspace.jsx` (document line)
 
 **Dependencies:** Tasks 1–3 (those pages also use the controls)
 
