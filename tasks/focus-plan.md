@@ -109,7 +109,7 @@ Tasks 1–4 and Tasks 5–6 have no shared files, so the two people work at the 
 
 - [x] Task 1: Depression criteria and scorer
 - [x] Task 2: Quote binder
-- [ ] Task 3: Focus agent request
+- [x] Task 3: Focus agent request
 - [ ] Task 4: Gold transcripts
 
 ### Checkpoint: Agent

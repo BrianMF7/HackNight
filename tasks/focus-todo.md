@@ -67,14 +67,14 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Build the focus-agent request. The prompt asks for criterion ids and quoted evidence only. The parsed result is bindings, then `bindCriteria`, then `scoreFocus` can be applied by the caller. Tests inject `fetch`. Nothing in this task listens on a port.
 
 **Acceptance criteria:**
-- [ ] The request text lists `dep-mood`, `dep-interest`, and `dep-span`, asks for JSON bindings, and does not ask for a diagnosis name or a diagnosis code
-- [ ] A recorded body whose quotes are in the fixture transcript becomes bindings; a focus name in that body is ignored
-- [ ] `synthetic: false` without `ALLOW_PHI=1` refuses before fetch
-- [ ] The request JSON uses `gemini-3.8-flash` and `thinkingLevel` `low`
+- [x] The request text lists `dep-mood`, `dep-interest`, and `dep-span`, asks for JSON bindings, and does not ask for a diagnosis name or a diagnosis code
+- [x] A recorded body whose quotes are in the fixture transcript becomes bindings; a focus name in that body is ignored
+- [x] `synthetic: false` without `ALLOW_PHI=1` refuses before fetch
+- [x] The request JSON uses `gemini-3.8-flash` and `thinkingLevel` `low`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-agent.test.js`
-- [ ] Build succeeds: `node --check server/focus/agent.js`
+- [x] Tests pass: `node --test server/test/focus-agent.test.js`
+- [x] Build succeeds: `node --check server/focus/agent.js`
 
 **Dependencies:** Task 2
 
