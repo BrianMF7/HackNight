@@ -9,19 +9,40 @@ import { applyFinalPass, applyLiveDrafts, planFinalPass } from "./applyLiveDraft
 // Elapsed time is taken from the session start; the real backend enforces all timing rules.
 const PLAYBACK_SPEED = 2; // demo playback runs faster than real time
 
+/**
+ * @typedef {import("./applyLiveDrafts").FieldState} FieldState
+ * @typedef {import("./applyLiveDrafts").AnswerMap} AnswerMap
+ * @typedef {FieldState & { at: number, fieldId: string }} PlaybackEvent
+ * @typedef {{ t: number, speaker: string, text: string }} TranscriptLine
+ * @typedef {{
+ *   key: string,
+ *   type: "answered",
+ *   fieldId: string,
+ *   label?: string,
+ *   ev: FieldState,
+ * } | {
+ *   key: string,
+ *   type: "needed",
+ *   fieldId: string,
+ *   label: string,
+ *   followUp: string,
+ * }} IntakeNotification
+ */
+
+/** @param {{ id: string } | null} session */
 export default function useIntakeSession(session) {
   const [elapsed, setElapsed] = useState(0);
-  const [answers, setAnswers] = useState({}); // fieldId -> { status, answer, evidence, t }
-  const [events, setEvents] = useState([]);
-  const [transcript, setTranscript] = useState([]);
-  const [notifications, setNotifications] = useState([]);
-  const [snoozed, setSnoozed] = useState({}); // fieldId -> true (visual only, not complete)
-  const [connection, setConnection] = useState("connected"); // connected | patient_left
+  const [answers, setAnswers] = useState(/** @type {AnswerMap} */ ({})); // fieldId -> { status, answer, evidence, t }
+  const [events, setEvents] = useState(/** @type {PlaybackEvent[]} */ ([]));
+  const [transcript, setTranscript] = useState(/** @type {TranscriptLine[]} */ ([]));
+  const [notifications, setNotifications] = useState(/** @type {IntakeNotification[]} */ ([]));
+  const [snoozed, setSnoozed] = useState(/** @type {Record<string, boolean>} */ ({})); // fieldId -> true (visual only, not complete)
+  const [connection, setConnection] = useState(/** @type {"connected" | "patient_left"} */ ("connected"));
   const [paused, setPaused] = useState(false);
-  const firedRef = useRef(new Set());
+  const firedRef = useRef(/** @type {Set<string>} */ (new Set()));
   const reminderFired = useRef(false);
   const appliedSeqRef = useRef(0);
-  const appliedFinalLinesRef = useRef(null);
+  const appliedFinalLinesRef = useRef(/** @type {number | null} */ (null));
   const answersRef = useRef(answers);
   const transcriptRef = useRef(transcript);
   answersRef.current = answers;
@@ -56,6 +77,7 @@ export default function useIntakeSession(session) {
   }, [playhead, events]);
 
   const questionState = useCallback(
+    /** @param {string} id @returns {FieldState} */
     (id) => answers[id] || { status: "not_answered" },
     [answers]
   );
@@ -81,12 +103,19 @@ export default function useIntakeSession(session) {
     setNotifications((n) => [...n, { key: `need-${next.id}`, type: "needed", fieldId: next.id, label: next.label, followUp: next.followUp }]);
   }, [playhead, outstanding]);
 
+  /** @param {string} key */
   const dismissNotification = (key) => {
     setNotifications((n) => n.filter((x) => x.key !== key));
   };
+  /** @param {string} fieldId */
   const snooze = (fieldId) => setSnoozed((s) => ({ ...s, [fieldId]: true }));
 
+  /**
+   * @param {string} fieldId
+   * @param {string} [editedAnswer]
+   */
   const confirm = async (fieldId, editedAnswer) => {
+    if (!session) return;
     const current = answers[fieldId];
     const answer = editedAnswer ?? current?.answer ?? "";
     await workspaceApi.recordClinicianAction({ sessionId: session.id, fieldId, action: editedAnswer != null ? "edit_confirm" : "confirm", answer });
@@ -94,12 +123,18 @@ export default function useIntakeSession(session) {
     setNotifications((n) => n.filter((x) => x.fieldId !== fieldId));
   };
 
+  /**
+   * @param {string} fieldId
+   * @param {string} text
+   */
   const saveEdit = async (fieldId, text) => {
+    if (!session) return;
     await workspaceApi.recordClinicianAction({ sessionId: session.id, fieldId, action: "edit", answer: text });
     setAnswers((a) => ({ ...a, [fieldId]: { ...(a[fieldId] || {}), status: "draft", answer: text, clinicianEdited: true } }));
   };
 
-  const appendTranscriptLine = useCallback(async (line) => {
+  const appendTranscriptLine = useCallback(/** @param {TranscriptLine} line */ async (line) => {
+    if (!session) return;
     setTranscript((rows) => [...rows, line]);
     try {
       const response = await workspaceApi.appendTranscriptLine({ sessionId: session.id, ...line });

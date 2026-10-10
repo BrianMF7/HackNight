@@ -35,12 +35,12 @@ Starting strict count: **235**.
 **Description:** `useState([])` and `useState({})` in `useIntakeSession.js` infer `never[]` and `{}`. Type events, transcript lines, notifications, and the answers map with the shapes those setters already write. Type `applyLiveDrafts.js` parameters the same way. `appliedFinalLinesRef` holds a number or null.
 
 **Acceptance criteria:**
-- [ ] Strict `tsc` no longer reports `useIntakeSession.js` or `applyLiveDrafts.js`
-- [ ] `node --test src/lib/applyLiveDrafts.test.js` passes
+- [x] Strict `tsc` no longer reports `useIntakeSession.js` or `applyLiveDrafts.js`
+- [x] `node --test src/lib/applyLiveDrafts.test.js` passes
 
 **Verification:**
-- [ ] Strict `tsc` error list no longer names those two files
-- [ ] `node --test src/lib/applyLiveDrafts.test.js`
+- [x] Strict `tsc` error list no longer names those two files
+- [x] `node --test src/lib/applyLiveDrafts.test.js`
 
 **Dependencies:** Task A (`safety` on questions, answer status)
 
