@@ -3,8 +3,22 @@ import { cn } from "../../lib/utils"
 import { buildSrcSet, buildTransformUrl, splitImageProps } from "./image-helpers"
 import { useResponsiveImage } from "./use-responsive-image"
 
+/**
+ * @typedef {{ baseUrl: string, filename: string }} WixParsedImage
+ */
 export const ResponsiveImage = React.forwardRef(
-  ({ src, parsed, fittingType, focalPoint, quality, className, style, aspectRatio, onLoad, onSourceChange, ...props }, ref) => {
+  (
+    /** @type {React.ComponentPropsWithoutRef<"img"> & {
+     *   parsed: WixParsedImage,
+     *   fittingType?: string,
+     *   focalPoint?: { x: number, y: number },
+     *   quality?: number,
+     *   aspectRatio?: string,
+     *   onSourceChange?: (src: string, className: string) => void,
+     * }} */
+    { src, parsed, fittingType, focalPoint, quality, className, style, aspectRatio, onLoad, onSourceChange, ...props },
+    ref
+  ) => {
     const { wrapperRef, imgRef, loaded, options, handleLoad } = useResponsiveImage(
       { parsed, fittingType, focalPoint, quality, className, onLoad, onSourceChange }, ref
     )

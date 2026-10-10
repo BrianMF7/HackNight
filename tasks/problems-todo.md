@@ -233,11 +233,11 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** The remaining widened-check files. Sidebar and chart destructure more than `className`. Chart's indicator style needs a CSS-variable extension of `CSSProperties`, not a cast to `any`.
 
 **Acceptance criteria:**
-- [ ] Widened check reports zero errors in `src/components/ui`
-- [ ] Chart CSS variables stay on the indicator element
+- [x] Widened check reports zero errors in `src/components/ui`
+- [x] Chart CSS variables stay on the indicator element
 
 **Verification:**
-- [ ] Widened `tsc` over `src/components/ui`
+- [x] Widened `tsc` over `src/components/ui`
 
 **Dependencies:** Tasks 7–8
 

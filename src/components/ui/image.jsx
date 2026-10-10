@@ -20,6 +20,14 @@ const FALLBACK_IMAGE_URL =
  */
 const Image = React.forwardRef(
   (
+    /** @type {React.ComponentPropsWithoutRef<"img"> & {
+     *   fittingType?: "fill" | "fit",
+     *   originWidth?: number,
+     *   originHeight?: number,
+     *   focalPointX?: number,
+     *   focalPointY?: number,
+     *   quality?: number,
+     * }} */
     {
       src: source,
       fittingType = "fill",

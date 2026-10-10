@@ -10,7 +10,8 @@ const THEMES = {
   dark: ".dark"
 }
 
-const ChartContext = React.createContext(null)
+/** @typedef {{ config: ChartConfig }} ChartContextValue */
+const ChartContext = React.createContext(/** @type {ChartContextValue | null} */ (null))
 
 function useChart() {
   const context = React.useContext(ChartContext)
@@ -22,7 +23,17 @@ function useChart() {
   return context
 }
 
-const ChartContainer = React.forwardRef(({ id, className, children, config, ...props }, ref) => {
+/**
+ * @typedef {{ label?: React.ReactNode, icon?: React.ComponentType, color?: string, theme?: Record<string, string> }} ChartItemConfig
+ * @typedef {Record<string, ChartItemConfig>} ChartConfig
+ * @typedef {{ value?: string | number, name?: string, dataKey?: string | number, color?: string, payload?: { fill?: string } }} ChartPoint
+ */
+
+const ChartContainer = React.forwardRef((
+  /** @type {Omit<React.ComponentPropsWithoutRef<"div">, "children"> & { id?: string, config: ChartConfig, children?: React.ReactElement }} */
+  { id, className, children, config, ...props }, 
+  ref
+) => {
   const uniqueId = React.useId()
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
 
@@ -80,6 +91,21 @@ return color ? `  --color-${key}: ${color};` : null
 const ChartTooltip = RechartsPrimitive.Tooltip
 
 const ChartTooltipContent = React.forwardRef((
+  /** @type {{
+   *   active?: boolean,
+   *   payload?: ChartPoint[],
+   *   className?: string,
+   *   indicator?: "dot" | "line" | "dashed",
+   *   hideLabel?: boolean,
+   *   hideIndicator?: boolean,
+   *   label?: React.ReactNode,
+   *   labelFormatter?: (value: React.ReactNode, payload: ChartPoint[]) => React.ReactNode,
+   *   labelClassName?: string,
+   *   formatter?: (value: ChartPoint["value"], name: ChartPoint["name"], item: ChartPoint, index: number, payload: ChartPoint["payload"]) => React.ReactNode,
+   *   color?: string,
+   *   nameKey?: string,
+   *   labelKey?: string,
+   * }} */
   {
     active,
     payload,
@@ -178,12 +204,10 @@ const ChartTooltipContent = React.forwardRef((
                             indicator === "dashed",
                           "my-0.5": nestLabel && indicator === "dashed",
                         })}
-                        style={
-                          {
-                            "--color-bg": indicatorColor,
-                            "--color-border": indicatorColor
-                          }
-                        } />
+                        style={/** @type {React.CSSProperties & { "--color-bg"?: string, "--color-border"?: string }} */ ({
+                          "--color-bg": indicatorColor,
+                          "--color-border": indicatorColor,
+                        })} />
                     )
                   )}
                   <div
@@ -217,6 +241,7 @@ ChartTooltipContent.displayName = "ChartTooltip"
 const ChartLegend = RechartsPrimitive.Legend
 
 const ChartLegendContent = React.forwardRef((
+  /** @type {{ className?: string, hideIcon?: boolean, payload?: ChartPoint[], verticalAlign?: "top" | "bottom", nameKey?: string }} */
   { className, hideIcon = false, payload, verticalAlign = "bottom", nameKey },
   ref
 ) => {
