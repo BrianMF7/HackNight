@@ -2,12 +2,21 @@ import React, { useEffect, useState } from "react";
 import { FileText, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { workspaceApi } from "@/api";
+import { isErrorShape } from "@/api/ApiError";
+
+/**
+ * @typedef {{ id: string, title: string, pages: number, available: boolean, note: string }} TemplateCard
+ */
 
 // Template selection. Forms are kept separate (never merged). Only the Adult Intake is loaded for the demo.
 export default function TemplatePicker() {
-  const [templates, setTemplates] = useState(null);
-  const [error, setError] = useState(null);
-  useEffect(() => { workspaceApi.getTemplates().then(setTemplates).catch(setError); }, []);
+  const [templates, setTemplates] = useState(/** @type {TemplateCard[] | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/api/ApiError").ErrorShape | null} */ (null));
+  useEffect(() => {
+    workspaceApi.getTemplates().then(setTemplates).catch((/** @type {unknown} */ reason) => {
+      setError(isErrorShape(reason) ? reason : { message: "Could not load templates." });
+    });
+  }, []);
 
   return (
     <div className="rounded-xl border border-border bg-white p-5">

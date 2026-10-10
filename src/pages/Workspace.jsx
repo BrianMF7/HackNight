@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useToast } from "@/components/ui/use-toast";
 import { workspaceApi } from "@/api";
+import { isErrorShape } from "@/api/ApiError";
 import { getMode } from "@/api/config";
 import useIntakeSession from "@/components/workspace/useIntakeSession";
 import VideoPane from "@/components/workspace/VideoPane";
@@ -17,12 +18,22 @@ import PatientLeftModal from "@/components/workspace/PatientLeftModal";
 import ReviewModal from "@/components/workspace/ReviewModal";
 
 // The most important screen: video on the left (~45%), the live standardized document on the right (~55%).
+/**
+ * @typedef {{
+ *   id: string,
+ *   patientLabel: string,
+ *   therapist: { name: string, email: string },
+ *   plannedMinutes: number,
+ *   startedAt?: number,
+ * }} WorkspaceInfo
+ */
+
 export default function Workspace() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [info, setInfo] = useState(null);
-  const [error, setError] = useState(null);
-  const [highlightId, setHighlightId] = useState(null);
+  const [info, setInfo] = useState(/** @type {WorkspaceInfo | null} */ (null));
+  const [error, setError] = useState(/** @type {import("@/api/ApiError").ErrorShape | null} */ (null));
+  const [highlightId, setHighlightId] = useState(/** @type {string | null} */ (null));
   const [focusMode, setFocusMode] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [sessionStatus, setSessionStatus] = useState("In progress");
@@ -36,24 +47,28 @@ export default function Workspace() {
         ...(getMode() === "live" ? { live: true } : {}),
       })
       .then(setInfo)
-      .catch(setError);
+      .catch((/** @type {unknown} */ reason) => {
+        setError(isErrorShape(reason) ? reason : { message: "Could not start the session." });
+      });
   }, []);
 
   const session = useIntakeSession(info);
 
-  const jumpTo = useCallback((id) => {
+  const jumpTo = useCallback((/** @type {string} */ id) => {
     setFocusMode((f) => f);
     setHighlightId(id);
     document.getElementById(`q-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 3500);
   }, []);
 
+  /** @param {string} fieldId */
   const play = async (fieldId) => {
+    if (!info) return;
     try {
       await workspaceApi.playQuestion({ sessionId: info.id, fieldId });
       toast({ title: "Play Question", description: getMode() === "live" ? "Playing the question prompt." : "Demo mode: audio comes from the backend's ElevenLabs integration once connected." });
     } catch (e) {
-      toast({ title: "Could not play question", description: e.message, variant: "destructive" });
+      toast({ title: "Could not play question", description: isErrorShape(e) ? e.message : undefined, variant: "destructive" });
     }
   };
 
@@ -63,6 +78,7 @@ export default function Workspace() {
   };
 
   const keepDraft = async () => {
+    if (!info) return;
     await workspaceApi.retainDraft({ sessionId: info.id });
     setSessionStatus("Incomplete draft retained for review (not sent)");
     session.setConnection("connected");
@@ -71,6 +87,7 @@ export default function Workspace() {
     toast({ title: "Draft kept for review", description: "Nothing was sent to the therapist." });
   };
   const discardDraft = async () => {
+    if (!info) return;
     await workspaceApi.discardDraft({ sessionId: info.id });
     navigate("/app");
   };

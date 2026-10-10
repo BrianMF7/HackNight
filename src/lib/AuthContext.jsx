@@ -1,9 +1,11 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { isErrorShape } from '@/api/ApiError';
 import { appParams } from '@/lib/app-params';
 
 /**
- * @typedef {{ email?: string, full_name?: string }} AuthUser
+ * @typedef {import('@base44/sdk').User} AuthUser
+ * @typedef {import('@base44/sdk').AppPublicSettingsResponse} PublicSettings
  * @typedef {{ type: string, message?: string }} AuthErrorInfo
  * @typedef {{
  *   user: AuthUser | null,
@@ -11,7 +13,7 @@ import { appParams } from '@/lib/app-params';
  *   isLoadingAuth: boolean,
  *   isLoadingPublicSettings: boolean,
  *   authError: AuthErrorInfo | null,
- *   appPublicSettings: object | null,
+ *   appPublicSettings: PublicSettings | null,
  *   authChecked: boolean,
  *   logout: (shouldRedirect?: boolean) => void,
  *   navigateToLogin: () => void,
@@ -22,14 +24,15 @@ import { appParams } from '@/lib/app-params';
 
 const AuthContext = createContext(/** @type {AuthState | undefined} */ (undefined));
 
+/** @param {{ children?: React.ReactNode }} props */
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(/** @type {AuthUser | null} */ (null));
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
   const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
-  const [authError, setAuthError] = useState(null);
+  const [authError, setAuthError] = useState(/** @type {AuthErrorInfo | null} */ (null));
   const [authChecked, setAuthChecked] = useState(false);
-  const [appPublicSettings, setAppPublicSettings] = useState(null); // Contains only { id, public_settings }
+  const [appPublicSettings, setAppPublicSettings] = useState(/** @type {PublicSettings | null} */ (null)); // Contains only { id, public_settings }
 
   useEffect(() => {
     checkAppState();
@@ -55,10 +58,11 @@ export const AuthProvider = ({ children }) => {
         setIsLoadingPublicSettings(false);
       } catch (appError) {
         console.error('App state check failed:', appError);
-        
+        const failure = isErrorShape(appError) ? appError : null;
+
         // Handle app-level errors
-        if (appError.status === 403 && appError.data?.extra_data?.reason) {
-          const reason = appError.data.extra_data.reason;
+        if (failure && failure.status === 403 && failure.data?.extra_data?.reason) {
+          const reason = failure.data.extra_data.reason;
           if (reason === 'auth_required') {
             setAuthError({
               type: 'auth_required',
@@ -72,13 +76,13 @@ export const AuthProvider = ({ children }) => {
           } else {
             setAuthError({
               type: reason,
-              message: appError.message
+              message: failure.message
             });
           }
         } else {
           setAuthError({
             type: 'unknown',
-            message: appError.message || 'Failed to load app'
+            message: (failure && failure.message) || 'Failed to load app'
           });
         }
         setIsLoadingPublicSettings(false);
@@ -88,7 +92,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Unexpected error:', error);
       setAuthError({
         type: 'unknown',
-        message: error.message || 'An unexpected error occurred'
+        message: (isErrorShape(error) && error.message) || 'An unexpected error occurred'
       });
       setIsLoadingPublicSettings(false);
       setIsLoadingAuth(false);
@@ -111,7 +115,7 @@ export const AuthProvider = ({ children }) => {
       setAuthChecked(true);
       
       // If user auth fails, it might be an expired token
-      if (error.status === 401 || error.status === 403) {
+      if (isErrorShape(error) && (error.status === 401 || error.status === 403)) {
         setAuthError({
           type: 'auth_required',
           message: 'Authentication required'

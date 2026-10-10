@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { appParams } from "@/lib/app-params";
+import { isErrorShape } from "@/api/ApiError";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import AuthLayout from "@/components/AuthLayout";
@@ -11,9 +12,19 @@ import AuthLayout from "@/components/AuthLayout";
 // the categories of access being granted, and posts the approve/deny decision.
 // Do not change the fetch calls, headers, or the `ctx` handle handling — styling
 // and copy are safe to edit.
+/**
+ * @typedef {{
+ *   authenticated?: boolean,
+ *   login_path?: string,
+ *   client_name?: string,
+ *   app_name?: string,
+ *   tools?: Array<{ name: string, title?: string, description?: string }>,
+ * }} ConsentInfo
+ */
+
 export default function OAuthConsent() {
   const ctx = new URLSearchParams(window.location.search).get("ctx");
-  const [info, setInfo] = useState(null);
+  const [info, setInfo] = useState(/** @type {ConsentInfo | null} */ (null));
   const [checking, setChecking] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [decided, setDecided] = useState("");
@@ -80,10 +91,16 @@ export default function OAuthConsent() {
     })();
   }, [ctx]);
 
+  /** @param {"approve" | "deny"} action */
   const respond = async (action) => {
+    if (!ctx) {
+      setError("This authorization link is invalid or has expired.");
+      return;
+    }
     setSubmitting(true);
     setError("");
     try {
+      /** @type {Record<string, string>} */
       const headers = { "Content-Type": "application/json" };
       // Cookie-backed sessions carry no token; sending "Bearer null" would
       // shadow the valid cookie, so add the header only when a token exists.
@@ -130,7 +147,7 @@ export default function OAuthConsent() {
         setSubmitting(false);
       }
     } catch (e) {
-      setError(e.message);
+      setError(isErrorShape(e) && e.message ? e.message : "Could not complete authorization. Please try again.");
       setSubmitting(false);
     }
   };
@@ -185,7 +202,7 @@ export default function OAuthConsent() {
     );
   }
 
-  const tools = Array.isArray(info.tools) ? info.tools : [];
+  const tools = info && Array.isArray(info.tools) ? info.tools : [];
 
   return (
     <AuthLayout

@@ -5,7 +5,7 @@ const { appId, token, functionsVersion, appBaseUrl } = appParams;
 
 export const base44 = createClient({
   appId,
-  token,
+  token: token ?? undefined,
   functionsVersion,
   serverUrl: '',
   appBaseUrl

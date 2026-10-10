@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 // Request-access form is demo-only: it does not transmit anything.
 export default function DemoAndContact() {
   const [done, setDone] = useState(false);
+  /** @param {React.FormEvent<HTMLFormElement>} e */
   const submit = (e) => { e.preventDefault(); setDone(true); };
   return (
     <>

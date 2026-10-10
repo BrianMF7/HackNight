@@ -91,11 +91,11 @@ Starting strict count: **235**.
 **Description:** `useState(null)` in auth, consent, workspace, and the template picker. Form handlers and `catch` bindings. Narrow `string | null` before `resetPassword`, `encodeURIComponent`, and the Base44 client token. Consent response headers are `Record<string, string>`.
 
 **Acceptance criteria:**
-- [ ] Strict `tsc` no longer reports `AuthContext.jsx`, `Login.jsx`, `Register.jsx`, `ForgotPassword.jsx`, `ResetPassword.jsx`, `OAuthConsent.jsx`, `Workspace.jsx`, `TemplatePicker.jsx`, `DemoAndContact.jsx`, or `useApiMode.js`
-- [ ] Catch bindings stay `unknown` and are narrowed before `.message` or `.status`
+- [x] Strict `tsc` no longer reports `AuthContext.jsx`, `Login.jsx`, `Register.jsx`, `ForgotPassword.jsx`, `ResetPassword.jsx`, `OAuthConsent.jsx`, `Workspace.jsx`, `TemplatePicker.jsx`, `DemoAndContact.jsx`, or `useApiMode.js`
+- [x] Catch bindings stay `unknown` and are narrowed before `.message` or `.status`
 
 **Verification:**
-- [ ] Strict `tsc` error list no longer names those files
+- [x] Strict `tsc` error list no longer names those files
 
 **Dependencies:** Tasks B and C (workspace page passes session and document props)
 
