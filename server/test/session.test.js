@@ -142,6 +142,51 @@ test("an empty transcript line is 400 and adds nothing", async () => {
   assert.deepEqual(await afterRes.json(), transcript);
 });
 
+test("an unknown speaker is 400 and adds nothing; Patient and an omitted speaker are stored", async () => {
+  const previousPhi = process.env.ALLOW_PHI;
+  delete process.env.ALLOW_PHI;
+  try {
+    const created = await fetch(`${base}/api/sessions`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ templateId: "adult-intake-v1", live: true }),
+    });
+    const session = await created.json();
+
+    const rejected = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ t: 2, speaker: "Therapist", text: "Not a role we store" }),
+    });
+    assert.equal(rejected.status, 400);
+    assert.equal((await rejected.json()).code, "BAD_REQUEST");
+
+    const patient = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ t: 3, speaker: "Patient", text: "I've been feeling overwhelmed" }),
+    });
+    assert.equal(patient.status, 200);
+
+    const omitted = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ t: 4, text: "What brings you in today?" }),
+    });
+    assert.equal(omitted.status, 200);
+    assert.equal((await omitted.json()).speaker, "Clinician");
+
+    const after = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+    assert.deepEqual(await after.json(), [
+      { t: 3, speaker: "Patient", text: "I've been feeling overwhelmed" },
+      { t: 4, speaker: "Clinician", text: "What brings you in today?" },
+    ]);
+  } finally {
+    if (previousPhi === undefined) delete process.env.ALLOW_PHI;
+    else process.env.ALLOW_PHI = previousPhi;
+  }
+});
+
 test("an unknown template id is 404", async () => {
   const res = await fetch(`${base}/api/sessions`, {
     method: "POST",

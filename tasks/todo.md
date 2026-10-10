@@ -726,13 +726,13 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** `startRealtimeStt` takes an optional `track`. With a track it records `new MediaStream([track])` instead of calling `getUserMedia`, and `stop()` never stops that track, because it belongs to Daily. `VideoPane` starts a second Scribe stream on the patient's audio track, with a fresh single-use token, and posts its committed lines as `speaker: "Patient"`. That stream ignores the clinician's mic toggle and stops when the track stops, the patient leaves, the session pauses, or the pane unmounts. `transcript-lines` accepts only `Clinician` or `Patient` as the speaker.
 
 **Acceptance criteria:**
-- [ ] `stop()` does not stop a passed-in track, and still stops a microphone it opened
-- [ ] An unknown speaker is 400 and adds nothing
+- [x] `stop()` does not stop a passed-in track, and still stops a microphone it opened
+- [x] An unknown speaker is 400 and adds nothing
 - [ ] Patient answers spoken on the phone become "Patient" lines and fill fields
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/session.test.js src/lib/realtimeStt.test.js`
-- [ ] Build succeeds: `npm run typecheck && npx eslint . --quiet && npm run build`
+- [x] Tests pass: `node --test server/test/session.test.js src/lib/realtimeStt.test.js`
+- [x] Build succeeds: `npm run typecheck && npx eslint . --quiet && npm run build`
 - [ ] Manual check: the clinician asks on the laptop, the patient answers on the phone, and fields fill with patient quotes
 
 **Dependencies:** Task 14

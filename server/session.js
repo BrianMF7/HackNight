@@ -177,9 +177,13 @@ async function appendTranscriptLine(rawId, line, fetchImpl) {
   }
   const record = sessions.get(sessionId);
   if (!record) return notFound();
+  const rawSpeaker = line?.speaker;
+  if (typeof rawSpeaker === "string" && rawSpeaker !== "" && rawSpeaker !== "Clinician" && rawSpeaker !== "Patient") {
+    return { status: 400, body: { message: "Speaker must be Clinician or Patient", code: "BAD_REQUEST" } };
+  }
   const entry = {
     t: Number(line?.t) || 0,
-    speaker: line?.speaker || "Clinician",
+    speaker: rawSpeaker || "Clinician",
     text: String(line?.text || "").trim(),
   };
   if (!entry.text) {

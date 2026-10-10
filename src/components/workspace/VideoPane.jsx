@@ -66,6 +66,8 @@ export default function VideoPane({
   const [people, setPeople] = useState(/** @type {DailyParticipant[]} */ ([]));
   const [waiting, setWaiting] = useState(/** @type {Array<{ id: string, name: string }>} */ ([]));
   const [copied, setCopied] = useState(false);
+  const patient = people.find((p) => !p.local);
+  const patientAudio = patient?.tracks.audio.state === "playable" ? patient.tracks.audio.persistentTrack : undefined;
   const stopRef = useRef(/** @type {{ stop: () => void } | null} */ (null));
   const startedAtRef = useRef(sessionInfo?.startedAt || Date.now());
   const leftRef = useRef(onSimulateDisconnect);
@@ -127,6 +129,37 @@ export default function VideoPane({
       stop();
     };
   }, [mic, live, liveMode, session.paused, onCommittedTranscript]);
+
+  // The patient's Daily track, not the laptop mic. The mic button does not start or stop this stream.
+  useEffect(() => {
+    if (!liveMode || !live || session.paused || !patientAudio) return undefined;
+    let cancelled = false;
+    /** @type {{ stop: () => void } | null} */
+    let handle = null;
+
+    (async () => {
+      try {
+        const { wsUrl } = await workspaceApi.getSttToken();
+        if (cancelled) return;
+        handle = await startRealtimeStt({
+          wsUrl,
+          track: patientAudio,
+          onCommitted: (text) => {
+            const t = Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000));
+            onCommittedTranscript?.({ t, speaker: "Patient", text });
+          },
+        });
+        if (cancelled) handle.stop();
+      } catch {
+        // The clinician mic stream reports its own failure. This one just stops.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      handle?.stop();
+    };
+  }, [liveMode, live, session.paused, patientAudio, onCommittedTranscript]);
 
   // Any failure here (e.g. no DAILY_API_KEY) leaves mic-only live mode exactly as it was.
   useEffect(() => {
@@ -191,7 +224,6 @@ export default function VideoPane({
     call?.setLocalAudio(mic).setLocalVideo(cam);
   }, [call, mic, cam]);
 
-  const patient = people.find((p) => !p.local);
   const patientVideo = playableVideo(patient);
   const selfVideo = cam ? playableVideo(people.find((p) => p.local)) : undefined;
   const knocking = waiting[0];
