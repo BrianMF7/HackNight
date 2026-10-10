@@ -2,6 +2,28 @@
 // Structure, page order, section headings and question IDs never change per patient.
 // In live mode the backend owns the canonical template; this copy is for demo rendering only.
 // Field IDs are permanent. `safety: true` items need clinician confirmation and take priority.
+
+/**
+ * @typedef {{
+ *   id: string,
+ *   label: string,
+ *   followUp: string,
+ *   required: boolean,
+ *   phq?: boolean,
+ *   safety?: boolean,
+ * }} IntakeQuestion
+ * @typedef {{
+ *   id: string,
+ *   title: string,
+ *   questions: IntakeQuestion[],
+ *   note?: string,
+ * }} IntakeSection
+ * @typedef {{ page: number, sections: IntakeSection[] }} IntakePage
+ * @typedef {{ id: string, title: string, version: string, pages: IntakePage[] }} IntakeTemplate
+ * @typedef {IntakeQuestion & { sectionId: string, sectionTitle: string, page: number }} IntakeQuestionRef
+ */
+
+/** @type {IntakeTemplate} */
 export const adultIntake = {
   id: "adult-intake-v1",
   title: "Intake Questionnaire for New Patients (Adult)",
@@ -96,6 +118,7 @@ export const adultIntake = {
   ],
 };
 
+/** @type {IntakeQuestionRef[]} */
 export const allQuestions = adultIntake.pages.flatMap((p) =>
   p.sections.flatMap((s) => s.questions.map((q) => ({ ...q, sectionId: s.id, sectionTitle: s.title, page: p.page })))
 );
@@ -109,3 +132,5 @@ export const STATUS = {
   clarify: "Needs Clarification",
   confirmed: "Clinician Confirmed",
 };
+
+/** @typedef {keyof typeof STATUS} AnswerStatus */
