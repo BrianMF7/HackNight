@@ -168,7 +168,7 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 - [x] Task 9c-1: Shorter VAD commit, 16 kHz PCM
 - [x] Task 9c-2: Live session transcript starts empty
 - [x] Task 9c-3: Commit response includes grounded drafts
-- [ ] Task 9c-4: Form paints those drafts immediately
+- [x] Task 9c-4: Form paints those drafts immediately
 - [ ] Task 9c-5: Final Gemini pass over the full transcript
 - [ ] Task 9c-6: Review applies that pass without clearing omissions
 
@@ -180,9 +180,9 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 
 ### Checkpoint: After Tasks 9c-3 and 9c-4
 
-- [ ] `node --test server/test/gemini.test.js` passes, including the synthetic `POST /drafts` case with no network
-- [ ] One committed line returns grounded drafts in that response; a second commit during the call does not run two Gemini requests at once
-- [ ] The form shows the new draft when the commit response arrives, and a confirmed field stays confirmed
+- [x] `node --test server/test/gemini.test.js` passes, including the synthetic `POST /drafts` case with no network
+- [x] One committed line returns grounded drafts in that response; a second commit during the call does not run two Gemini requests at once
+- [x] The form shows the new draft when the commit response arrives, and a confirmed field stays confirmed
 - [ ] Human approval before a live microphone with `ALLOW_PHI=1`
 
 ### Checkpoint: After Tasks 9c-5 and 9c-6

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { workspaceApi } from "@/api";
 import { allQuestions } from "@/api/templates/adultIntake";
+import { applyLiveDrafts } from "./applyLiveDrafts";
 
 // Drives one intake session. In demo mode a synthetic transcript plays back and mock backend
 // events arrive over time. The frontend only DISPLAYS backend answers; it never invents them.
@@ -18,8 +19,10 @@ export default function useIntakeSession(session) {
   const [paused, setPaused] = useState(false);
   const firedRef = useRef(new Set());
   const reminderFired = useRef(false);
+  const appliedSeqRef = useRef(0);
 
   useEffect(() => {
+    appliedSeqRef.current = 0;
     if (!session) return;
     workspaceApi.getEvents({ sessionId: session.id }).then(setEvents);
     workspaceApi.getTranscript({ sessionId: session.id }).then(setTranscript);
@@ -92,7 +95,13 @@ export default function useIntakeSession(session) {
   const appendTranscriptLine = useCallback(async (line) => {
     setTranscript((rows) => [...rows, line]);
     try {
-      await workspaceApi.appendTranscriptLine({ sessionId: session.id, ...line });
+      const response = await workspaceApi.appendTranscriptLine({ sessionId: session.id, ...line });
+      // Compared at apply time so an older response cannot land after a newer one.
+      setAnswers((current) => {
+        const applied = applyLiveDrafts(current, response, appliedSeqRef.current);
+        appliedSeqRef.current = applied.lastSeq;
+        return applied.answers;
+      });
     } catch {
       // Live STT still shows in the UI if the persist route is unavailable.
     }

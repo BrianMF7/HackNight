@@ -384,13 +384,13 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** `appendTranscriptLine` already shows the committed line locally before the POST returns. When the response includes `drafts`, write them into `answers` as soon as the response arrives. Do not wait for the demo playhead, and do not copy them into the playback `events` array. Ignore a response whose `seq` is lower than the last one applied. Do not replace an answer whose status is `confirmed`. Partials never call append. Demo mode is unchanged.
 
 **Acceptance criteria:**
-- [ ] A live append response with a draft sets that field’s answer without waiting for `playhead`
-- [ ] A response with a lower `seq` does not overwrite a newer draft, and a confirmed field stays confirmed
-- [ ] Partial captions still update locally and do not POST
+- [x] A live append response with a draft sets that field’s answer without waiting for `playhead`
+- [x] A response with a lower `seq` does not overwrite a newer draft, and a confirmed field stays confirmed
+- [x] Partial captions still update locally and do not POST
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js` (server contract from 9c-3; this task does not add a component harness)
-- [ ] Build succeeds: `npm run build`
+- [x] Tests pass: `node --test server/test/gemini.test.js` (server contract from 9c-3; this task does not add a component harness)
+- [x] Build succeeds: `npm run build`
 - [ ] Manual check: in live mode, speak one answer, pause, and see that field fill when the commit returns. Confirm it, speak again, and see it stay confirmed
 
 **Dependencies:** Task 9c-3
@@ -405,9 +405,9 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 
 ## Checkpoint: After Tasks 9c-3 and 9c-4
 
-- [ ] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no network
-- [ ] One committed line returns grounded drafts in that response; overlapping commits do not run two Gemini calls at once
-- [ ] The form shows the new draft when the commit response arrives, and a confirmed field stays confirmed
+- [x] `node --test server/test/gemini.test.js` passes, including synthetic `POST /drafts` with no network
+- [x] One committed line returns grounded drafts in that response; overlapping commits do not run two Gemini calls at once
+- [x] The form shows the new draft when the commit response arrives, and a confirmed field stays confirmed
 - [ ] Human approves before a live microphone with `ALLOW_PHI=1`
 
 ---
