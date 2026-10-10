@@ -15,14 +15,14 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Add the depression evidence rules and a pure scorer. The scorer reads bound criterion ids and either returns the depression focus with a fixed reason sentence or returns nothing. It does not read the transcript and it does not call a model.
 
 **Acceptance criteria:**
-- [ ] `dep-mood` plus `dep-interest` returns `{ id: "depression", reason }` using a sentence defined in the scorer
-- [ ] `dep-mood` alone, `dep-interest` alone, an empty list, or an unknown id returns `null`
-- [ ] Adding `dep-span` to the required pair changes the reason and still returns `depression`
-- [ ] The criteria file states original evidence rules and does not contain DSM-5 criteria prose
+- [x] `dep-mood` plus `dep-interest` returns `{ id: "depression", reason }` using a sentence defined in the scorer
+- [x] `dep-mood` alone, `dep-interest` alone, an empty list, or an unknown id returns `null`
+- [x] Adding `dep-span` to the required pair changes the reason and still returns `depression`
+- [x] The criteria file states original evidence rules and does not contain DSM-5 criteria prose
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-score.test.js`
-- [ ] Build succeeds: `node --check server/focus/criteria.js && node --check server/focus/score.js`
+- [x] Tests pass: `node --test server/test/focus-score.test.js`
+- [x] Build succeeds: `node --check server/focus/criteria.js && node --check server/focus/score.js`
 
 **Dependencies:** None
 

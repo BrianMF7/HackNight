@@ -107,7 +107,7 @@ Tasks 1–4 and Tasks 5–6 have no shared files, so the two people work at the 
 
 ### Phase 1: Person 1, the agent
 
-- [ ] Task 1: Depression criteria and scorer
+- [x] Task 1: Depression criteria and scorer
 - [ ] Task 2: Quote binder
 - [ ] Task 3: Focus agent request
 - [ ] Task 4: Gold transcripts
