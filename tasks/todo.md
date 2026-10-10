@@ -121,13 +121,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `recordClinicianAction` stores `confirm` and `edit_confirm` as confirmed, and `edit` as draft so confirmation clears. `waive` on a safety id is rejected. Server state, not the request’s id list, is what later send will read.
 
 **Acceptance criteria:**
-- [ ] An edit after confirm clears confirmed
-- [ ] A safety waive does not count as confirmed
-- [ ] Actions persist on the in-memory session
+- [x] An edit after confirm clears confirmed
+- [x] A safety waive does not count as confirmed
+- [x] Actions persist on the in-memory session
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/actions.test.js`
-- [ ] Build succeeds: `node --check server/actions.js`
+- [x] Tests pass: `node --test server/test/actions.test.js`
+- [x] Build succeeds: `node --check server/actions.js`
 
 **Dependencies:** Task 3
 
