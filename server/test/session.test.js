@@ -76,40 +76,47 @@ test("POST /api/sessions returns the workspace shape and events match the fixtur
 });
 
 test("live create starts empty, and one append is the only transcript line", async () => {
-  const created = await fetch(`${base}/api/sessions`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({
-      templateId: "adult-intake-v1",
-      therapistName: "Dr. Rowan Ellis (synthetic)",
-      therapistEmail: "therapist@example.com",
-      live: true,
-    }),
-  });
-  assert.equal(created.status, 200);
-  const session = await created.json();
+  const previousPhi = process.env.ALLOW_PHI;
+  delete process.env.ALLOW_PHI;
+  try {
+    const created = await fetch(`${base}/api/sessions`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({
+        templateId: "adult-intake-v1",
+        therapistName: "Dr. Rowan Ellis (synthetic)",
+        therapistEmail: "therapist@example.com",
+        live: true,
+      }),
+    });
+    assert.equal(created.status, 200);
+    const session = await created.json();
 
-  const transcriptRes = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
-  assert.equal(transcriptRes.status, 200);
-  assert.deepEqual(await transcriptRes.json(), []);
+    const transcriptRes = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+    assert.equal(transcriptRes.status, 200);
+    assert.deepEqual(await transcriptRes.json(), []);
 
-  const eventsRes = await fetch(`${base}/api/sessions/${session.id}/events`, { headers: authHeaders() });
-  assert.equal(eventsRes.status, 200);
-  assert.deepEqual(await eventsRes.json(), []);
+    const eventsRes = await fetch(`${base}/api/sessions/${session.id}/events`, { headers: authHeaders() });
+    assert.equal(eventsRes.status, 200);
+    assert.deepEqual(await eventsRes.json(), []);
 
-  const line = { t: 4, speaker: "Clinician", text: "What brings you in today?" };
-  const appended = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify(line),
-  });
-  assert.equal(appended.status, 200);
-  assert.deepEqual(await appended.json(), line);
+    const line = { t: 4, speaker: "Clinician", text: "What brings you in today?" };
+    const appended = await fetch(`${base}/api/sessions/${session.id}/transcript-lines`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify(line),
+    });
+    assert.equal(appended.status, 200);
+    assert.deepEqual(await appended.json(), { ...line, seq: 1, drafts: [], code: "PHI_REFUSED" });
 
-  const after = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
-  assert.deepEqual(await after.json(), [line]);
-  const eventsAfter = await fetch(`${base}/api/sessions/${session.id}/events`, { headers: authHeaders() });
-  assert.deepEqual(await eventsAfter.json(), []);
+    const after = await fetch(`${base}/api/sessions/${session.id}/transcript`, { headers: authHeaders() });
+    assert.deepEqual(await after.json(), [line]);
+    const eventsAfter = await fetch(`${base}/api/sessions/${session.id}/events`, { headers: authHeaders() });
+    assert.deepEqual(await eventsAfter.json(), []);
+  } finally {
+    if (previousPhi === undefined) delete process.env.ALLOW_PHI;
+    else process.env.ALLOW_PHI = previousPhi;
+  }
 });
 
 test("an empty transcript line is 400 and adds nothing", async () => {

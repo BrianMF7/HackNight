@@ -66,6 +66,47 @@ function questionList(template) {
   );
 }
 
+function openQuestions(record) {
+  return questionList(getTemplate(record.templateId)).filter(
+    (question) => record.answers[question.id]?.status !== "confirmed",
+  );
+}
+
+// Commits that arrive mid-call share one follow-up over the transcript stored so far.
+function enqueueLiveDraft(record, fetchImpl) {
+  if (record.drafting) {
+    return new Promise((resolve, reject) => {
+      record.draftWaiters.push({ resolve, reject });
+    });
+  }
+  return runLiveDraft(record, fetchImpl);
+}
+
+async function runLiveDraft(record, fetchImpl) {
+  const lines = record.transcript.map((line) => ({ ...line }));
+  const seq = lines.length;
+  const questions = openQuestions(record);
+  record.drafting = true;
+  record.draftWaiters ??= [];
+  let result;
+  try {
+    const drafts = await draftFromTranscript(lines, questions, { synthetic: false, fetch: fetchImpl });
+    result = { seq, drafts };
+  } catch (err) {
+    if (err.code !== "PHI_REFUSED" && err.code !== "GEMINI_HTTP") throw err;
+    result = { seq, drafts: [], code: err.code };
+  } finally {
+    const waiters = record.draftWaiters.splice(0);
+    if (waiters.length) {
+      const follow = runLiveDraft(record, fetchImpl);
+      for (const waiter of waiters) follow.then(waiter.resolve, waiter.reject);
+    } else {
+      record.drafting = null;
+    }
+  }
+  return result;
+}
+
 function recordedGeminiBody() {
   return JSON.parse(readFileSync(new URL("./fixtures/gemini-ramble-response.json", import.meta.url), "utf8"));
 }
@@ -87,7 +128,7 @@ async function handleDrafts(rawId) {
   return { status: 200, body: grounded };
 }
 
-function appendTranscriptLine(rawId, line) {
+async function appendTranscriptLine(rawId, line, fetchImpl) {
   let sessionId;
   try {
     sessionId = decodeURIComponent(rawId);
@@ -105,10 +146,15 @@ function appendTranscriptLine(rawId, line) {
     return { status: 400, body: { message: "Transcript text is required", code: "BAD_REQUEST" } };
   }
   record.transcript.push(entry);
-  return { status: 200, body: entry };
+  if (!record.live) return { status: 200, body: entry };
+  const drafted = await enqueueLiveDraft(record, fetchImpl);
+  return {
+    status: 200,
+    body: { ...entry, seq: drafted.seq, drafts: drafted.drafts, ...(drafted.code ? { code: drafted.code } : {}) },
+  };
 }
 
-export async function handleSession(method, pathname, body, now) {
+export async function handleSession(method, pathname, body, now, fetchImpl) {
   if (method === "POST" && pathname === "/api/sessions") {
     const templateId = body?.templateId;
     const form = getTemplate(templateId);
@@ -141,7 +187,7 @@ export async function handleSession(method, pathname, body, now) {
   const draftsMatch = method === "POST" && /^\/api\/sessions\/([^/]+)\/drafts$/.exec(pathname);
   if (draftsMatch) return handleDrafts(draftsMatch[1]);
   const lineMatch = method === "POST" && /^\/api\/sessions\/([^/]+)\/transcript-lines$/.exec(pathname);
-  if (lineMatch) return appendTranscriptLine(lineMatch[1], body);
+  if (lineMatch) return appendTranscriptLine(lineMatch[1], body, fetchImpl);
   return null;
 }
 

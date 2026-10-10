@@ -44,7 +44,7 @@ async function fetchGemini(text, options) {
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ parts: [{ text }] }],
-      generationConfig: { responseMimeType: "application/json" },
+      generationConfig: { responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } },
     }),
   });
   if (!res.ok) fail("GEMINI_HTTP", "Gemini request failed");

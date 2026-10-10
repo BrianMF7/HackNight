@@ -167,7 +167,7 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 - [x] Task 11: ElevenLabs Scribe real-time STT (token mint + browser mic; see `server/stt.js`)
 - [x] Task 9c-1: Shorter VAD commit, 16 kHz PCM
 - [x] Task 9c-2: Live session transcript starts empty
-- [ ] Task 9c-3: Commit response includes grounded drafts
+- [x] Task 9c-3: Commit response includes grounded drafts
 - [ ] Task 9c-4: Form paints those drafts immediately
 - [ ] Task 9c-5: Final Gemini pass over the full transcript
 - [ ] Task 9c-6: Review applies that pass without clearing omissions

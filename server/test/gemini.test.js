@@ -175,3 +175,218 @@ test("an unknown session drafts route is 404", async () => {
   assert.equal(res.status, 404);
   assert.equal((await res.json()).code, "NOT_FOUND");
 });
+
+const LIVE_QUOTE = "I've been feeling really overwhelmed and anxious, and it's getting hard to function.";
+
+function groundedBody(quote) {
+  return {
+    candidates: [{
+      content: {
+        parts: [{
+          text: JSON.stringify({
+            drafts: [{
+              fieldId: "AIQ-001",
+              status: "draft",
+              answer: "Overwhelmed and anxious",
+              evidence: `"${quote}"`,
+              t: 6,
+            }],
+          }),
+        }],
+      },
+    }],
+  };
+}
+
+async function listen(fetchImpl) {
+  const liveServer = createServer({ token: TOKEN, origin: ORIGIN, fetchImpl });
+  await new Promise((resolve) => liveServer.listen(0, "127.0.0.1", resolve));
+  return {
+    base: `http://127.0.0.1:${liveServer.address().port}`,
+    close: () => new Promise((resolve, reject) => liveServer.close((err) => (err ? reject(err) : resolve()))),
+  };
+}
+
+async function createSession(url, live) {
+  const res = await fetch(`${url}/api/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ templateId: "adult-intake-v1", therapistEmail: "therapist@example.com", live }),
+  });
+  assert.equal(res.status, 200);
+  return (await res.json()).id;
+}
+
+function appendLine(url, id, line) {
+  return fetch(`${url}/api/sessions/${id}/transcript-lines`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(line),
+  });
+}
+
+async function withPhi(allow, fn) {
+  const previousPhi = process.env.ALLOW_PHI;
+  const previousKey = process.env.GEMINI_API_KEY;
+  if (allow) process.env.ALLOW_PHI = "1";
+  else delete process.env.ALLOW_PHI;
+  process.env.GEMINI_API_KEY = "test-key";
+  try {
+    await fn();
+  } finally {
+    if (previousPhi === undefined) delete process.env.ALLOW_PHI;
+    else process.env.ALLOW_PHI = previousPhi;
+    if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previousKey;
+  }
+}
+
+test("a live append returns a grounded draft from one fetch with thinkingBudget 0", async () => {
+  let calls = 0;
+  let sent;
+  const live = await listen(async (url, init) => {
+    calls += 1;
+    sent = { url, init };
+    return { ok: true, json: async () => groundedBody(LIVE_QUOTE) };
+  });
+  try {
+    await withPhi(true, async () => {
+      const id = await createSession(live.base, true);
+      const confirmed = await fetch(`${live.base}/api/sessions/${id}/actions`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ fieldId: "AIQ-002", action: "confirm", answer: "About three months ago" }),
+      });
+      assert.equal(confirmed.status, 200);
+      const line = { t: 6, speaker: "Patient", text: LIVE_QUOTE };
+      const res = await appendLine(live.base, id, line);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.t, line.t);
+      assert.equal(body.speaker, line.speaker);
+      assert.equal(body.text, line.text);
+      assert.equal(body.seq, 1);
+      assert.equal(body.drafts.length, 1);
+      assert.equal(body.drafts[0].fieldId, "AIQ-001");
+      assert.equal(body.drafts[0].evidence.includes(LIVE_QUOTE), true);
+      assert.equal(calls, 1);
+      assert.match(String(sent.url), /gemini-2\.5-flash:generateContent/);
+      const request = JSON.parse(sent.init.body);
+      assert.equal(request.generationConfig.thinkingConfig.thinkingBudget, 0);
+      const prompt = request.contents[0].parts[0].text;
+      assert.equal(prompt.includes(LIVE_QUOTE), true);
+      assert.equal(prompt.includes("AIQ-002"), false);
+      assert.doesNotMatch(prompt, /diagnos(?:is|e|tic)\s+code/i);
+      assert.doesNotMatch(prompt, /\bICD(?:-\d+)?\b/);
+      assert.doesNotMatch(prompt, /\bDSM(?:-?\d+)?\b/);
+    });
+  } finally {
+    await live.close();
+  }
+});
+
+test("a second live append waits, then one follow-up draft sees both lines", async () => {
+  let calls = 0;
+  let release;
+  const hold = new Promise((resolve) => { release = resolve; });
+  let started;
+  const gate = new Promise((resolve) => { started = resolve; });
+  const prompts = [];
+  const line1 = { t: 6, speaker: "Patient", text: LIVE_QUOTE };
+  const line2 = { t: 12, speaker: "Patient", text: "It started about three months ago." };
+  const live = await listen(async (_url, init) => {
+    calls += 1;
+    const prompt = JSON.parse(init.body).contents[0].parts[0].text;
+    prompts.push(prompt);
+    if (calls === 1) {
+      started();
+      await hold;
+    }
+    return { ok: true, json: async () => groundedBody(LIVE_QUOTE) };
+  });
+  try {
+    await withPhi(true, async () => {
+      const id = await createSession(live.base, true);
+      const first = appendLine(live.base, id, line1);
+      await Promise.race([
+        gate,
+        new Promise((_, reject) => setTimeout(() => reject(new Error("first fetch did not start")), 1000)),
+      ]);
+      const second = appendLine(live.base, id, line2);
+      const deadline = Date.now() + 1000;
+      let stored = 0;
+      while (Date.now() < deadline) {
+        const transcriptRes = await fetch(`${live.base}/api/sessions/${id}/transcript`, { headers: authHeaders() });
+        stored = (await transcriptRes.json()).length;
+        if (stored === 2) break;
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      assert.equal(stored, 2);
+      assert.equal(calls, 1);
+      release();
+      const firstBody = await (await first).json();
+      const secondBody = await (await second).json();
+      assert.equal(calls, 2);
+      assert.equal(firstBody.seq, 1);
+      assert.equal(secondBody.seq, 2);
+      assert.equal(prompts[0].includes(line2.text), false);
+      assert.equal(prompts[1].includes(line1.text), true);
+      assert.equal(prompts[1].includes(line2.text), true);
+    });
+  } finally {
+    release();
+    await live.close();
+  }
+});
+
+test("a refused or failed live draft stores the line and does not retry, and non-live drafts stay recorded", async () => {
+  let calls = 0;
+  const live = await listen(async () => {
+    calls += 1;
+    return { ok: false, status: 500, json: async () => ({}) };
+  });
+  try {
+    await withPhi(false, async () => {
+      const id = await createSession(live.base, true);
+      const line = { t: 6, speaker: "Patient", text: LIVE_QUOTE };
+      const res = await appendLine(live.base, id, line);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.seq, 1);
+      assert.deepEqual(body.drafts, []);
+      assert.equal(body.code, "PHI_REFUSED");
+      assert.equal(body.text, line.text);
+      assert.equal(calls, 0);
+      const stored = await fetch(`${live.base}/api/sessions/${id}/transcript`, { headers: authHeaders() });
+      assert.deepEqual(await stored.json(), [line]);
+    });
+
+    await withPhi(true, async () => {
+      const id = await createSession(live.base, true);
+      const line = { t: 8, speaker: "Patient", text: "Sleep has been rough." };
+      const res = await appendLine(live.base, id, line);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.seq, 1);
+      assert.deepEqual(body.drafts, []);
+      assert.equal(body.code, "GEMINI_HTTP");
+      assert.equal(calls, 1);
+      const stored = await fetch(`${live.base}/api/sessions/${id}/transcript`, { headers: authHeaders() });
+      assert.deepEqual(await stored.json(), [line]);
+    });
+
+    const recordedId = await createSession(live.base, false);
+    const drafts = await fetch(`${live.base}/api/sessions/${recordedId}/drafts`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: "{}",
+    });
+    assert.equal(drafts.status, 200);
+    const events = await drafts.json();
+    assert.equal(events.length, 1);
+    assert.equal(events[0].fieldId, "AIQ-001");
+    assert.equal(calls, 1);
+  } finally {
+    await live.close();
+  }
+});

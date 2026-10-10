@@ -358,13 +358,13 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Description:** On a live session, `POST .../transcript-lines` stores the line first, then runs the existing `draftFromTranscript` and `ground` path and returns `{ t, speaker, text, seq, drafts }`. `seq` is the count of live lines included in that draft. At most one Gemini call runs at a time; a commit that arrives mid-call is stored immediately, and exactly one follow-up runs after the current call, on the full live transcript. The prompt lists only questions not already confirmed in `record.answers`, plus every live line, and it still must not ask for a diagnosis code. The generate call sets `generationConfig.thinkingConfig.thinkingBudget` to 0 and keeps `gemini-2.5-flash`. `synthetic: false`. If `ALLOW_PHI` is unset, or the Gemini fetch fails, the line stays stored, `drafts` is `[]`, and the body includes `code` (`PHI_REFUSED` or `GEMINI_HTTP`). No retry loop. Non-live `POST .../drafts` still uses the recorded fixture body and does not call Gemini. Tests inject fetch the same way `createServer({ fetchImpl })` injects the ElevenLabs fetch.
 
 **Acceptance criteria:**
-- [ ] A live append whose quote is in that line returns a grounded draft in the same response; the injected fetch is called once, the request JSON has `thinkingBudget: 0`, and the prompt text has no diagnosis-code instruction and no confirmed field id
-- [ ] A second append that starts while the first fetch is pending does not start a second fetch until the first settles, then starts exactly one fetch whose transcript includes both lines; each response’s `seq` matches the line count that draft saw
-- [ ] With `ALLOW_PHI` unset, or when the injected fetch fails, the line is still on GET transcript, `drafts` is `[]`, and a failed fetch is not retried. Non-live `POST .../drafts` still returns the recorded AIQ-001 draft and does not call fetch
+- [x] A live append whose quote is in that line returns a grounded draft in the same response; the injected fetch is called once, the request JSON has `thinkingBudget: 0`, and the prompt text has no diagnosis-code instruction and no confirmed field id
+- [x] A second append that starts while the first fetch is pending does not start a second fetch until the first settles, then starts exactly one fetch whose transcript includes both lines; each response’s `seq` matches the line count that draft saw
+- [x] With `ALLOW_PHI` unset, or when the injected fetch fails, the line is still on GET transcript, `drafts` is `[]`, and a failed fetch is not retried. Non-live `POST .../drafts` still returns the recorded AIQ-001 draft and does not call fetch
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/gemini.test.js`
-- [ ] Build succeeds: `node --check server/gemini.js && node --check server/session.js && node --check server/index.js`
+- [x] Tests pass: `node --test server/test/gemini.test.js`
+- [x] Build succeeds: `node --check server/gemini.js && node --check server/session.js && node --check server/index.js`
 - [ ] Manual check: deferred until 9c-4, with `ALLOW_PHI=1` and a human at the mic
 
 **Dependencies:** Tasks 9b, 9c-2
