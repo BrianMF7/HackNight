@@ -20,6 +20,8 @@ This revision replaces the unfinished Next.js plan. Product code starts with `/b
 - **The server does not trust the client clock or the client’s confirmed-id list.** `createSession` stores `startedAt`. The handoff route reads `Date.now()` once at the boundary and passes both numbers into `clockStatus(startedAt, now)`. The clock module itself never calls `Date.now()`. Handoff uses answers stored by `recordClinicianAction`. A client that posts every field id still fails if the server never recorded those confirms.
 - **Canonical questions match the UI copy** in [`src/api/templates/adultIntake.js`](../src/api/templates/adultIntake.js): `adult-intake-v1`, required ids, and safety on `PHQ-009`, `SAF-001`, `SAF-002`. One emailed PDF contains those confirmed fields. PHQ-9 is not a second attachment. The code template is 4 pages; do not invent the other pages.
 - **Demo clock shortcut:** with `ALLOW_DEMO_OFFSET=1`, creating the synthetic session may set `startedAt` 45 minutes in the past so a judge can see an allowed send. Unset, the gate uses real elapsed time. `shortcut: demo offset is env-gated and off by default.`
+- **Transcript comes from ElevenLabs Scribe, not TTS.** Live audio is speech-to-text. There is no “play question” speech endpoint. Gemini only sees transcript text, then `ground` keeps or drops drafts. Demo mode may still use the synthetic fixture until Scribe is wired.
+- **No diagnosis codes.** Gemini prompts must not ask for a diagnosis code. Real (non-synthetic) transcript bodies need `ALLOW_PHI=1`.
 
 ```mermaid
 flowchart TD
@@ -27,12 +29,17 @@ flowchart TD
   mock[Mock adapter in the browser]
   live[Live adapter bearer fetch]
   http[Node server server/index.js]
+  scribe[ElevenLabs Scribe STT]
+  gemini[Gemini drafts then ground]
   rules[Pure modules clock ground packet pdf]
   memory[In-memory session until send]
   tiger[Tiger row after a successful send]
   vite --> mock
   vite --> live
   live --> http
+  http --> scribe
+  scribe --> gemini
+  gemini --> rules
   http --> rules
   rules --> memory
   rules --> tiger
@@ -46,18 +53,19 @@ Fill these in the live adapter only in the task that implements the handler.
 - `GET /api/templates` and `GET /api/templates/:templateId`
 - `POST /api/sessions` → the shape `Workspace.jsx` already stores (`id`, `patientLabel`, `therapist`, `plannedMinutes: 45`, `templateId`, `startedAt`)
 - `GET /api/sessions/:sessionId/transcript` → `{ t, speaker, text }[]`
+- `POST /api/sessions/:sessionId/transcript/chunks` → append Scribe partials; returns `{ ok: true, lines }`
 - `GET /api/sessions/:sessionId/events` → `{ at, fieldId, status, answer, evidence, t }[]`
+- `POST /api/sessions/:sessionId/drafts` → run Gemini on current transcript + questions, then `ground`; returns grounded events
 - `POST /api/sessions/:sessionId/actions` → `{ ok: true }`
 - `POST /api/sessions/:sessionId/retain` → `{ ok: true, status: "draft_retained", sent: false }`
 - `POST /api/sessions/:sessionId/discard` → `{ ok: true }`
 - `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, to }` or `{ allowed: false, reasons: [{ code, message }] }` with HTTP 200
-- `POST /api/sessions/:sessionId/play` → `{ audioUrl }` from prompt text only
 
-Refusal reasons the review alert already prints verbatim: `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`, `SEND_GATE_NOT_MET`. Auth and missing session stay 401 and 404 with `{ message, code }`.
+Refusal reasons the review alert already prints verbatim: `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`, `SEND_GATE_NOT_MET`. Auth and missing session stay 401 and 404 with `{ message, code }`. There is no `/play` route.
 
 ## Dependency graph
 
-Ping and the template ids come first. After that, the clock, grounding, and the Zoom normalizer can proceed on separate branches. Do not share `package.json` edits across open branches.
+Ping and the template ids come first. After that, the clock and Scribe/Gemini branches can proceed separately from confirm/keep. Do not share `package.json` edits across open branches.
 
 ```mermaid
 flowchart TD
@@ -69,17 +77,15 @@ flowchart TD
   choice[Task6 Keep or discard]
   gate[Task7 Handoff refusal]
   send[Task8 One PDF email]
+  scribe[Task11 ElevenLabs Scribe STT]
+  transcript[Task10 Full Scribe transcript]
   gemini[Task9 Gemini drafts]
-  zoom[Task10 Zoom file]
-  speech[Task11 ElevenLabs prompt]
   tiger[Task12 Tiger row]
   ping --> template --> session
   session --> confirm --> choice --> gate
   clock --> gate
   gate --> send
-  session --> gemini
-  session --> zoom
-  template --> speech
+  session --> scribe --> transcript --> gemini
   send --> tiger
 ```
 
@@ -123,17 +129,17 @@ flowchart TD
 
 ### Phase 4: Sponsors
 
-- [ ] Task 9: Gemini drafts
-- [ ] Task 10: Zoom transcript file
-- [ ] Task 11: ElevenLabs prompt audio
+- [ ] Task 11: ElevenLabs Scribe real-time STT
+- [ ] Task 10: Full Scribe transcript lines
+- [ ] Task 9: Gemini drafts from transcript
 - [ ] Task 12: Tiger stores the sent packet
 
 ### Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic path: playback events, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Synthetic path: fixture or Scribe transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Tiger row only when `DATABASE_URL` is set
-- [ ] Human approval before a live microphone, camera, or real inbox
+- [ ] Human approval before a live microphone, real Scribe session, or a real inbox
 
 ## Risks and mitigations
 
@@ -141,6 +147,8 @@ flowchart TD
 |---|---|---|
 | Mock blocks send after 45:00 | High | Task 8 flips that check to `SEND_GATE_NOT_MET` when under 45:00 |
 | Client lies about elapsed or confirmed ids | High | Server ignores both; uses `startedAt` and stored actions |
+| Gemini invents quotes or diagnoses | High | `ground` drops invented quotes; prompt forbids diagnosis codes |
+| Live mic / Scribe without consent | High | Stub in tests; live STT only with key + human approval; `ALLOW_PHI` for non-synthetic |
 | No PSY scan in the repo | Med | pdf-lib document of the confirmed packet; UI template is 4 pages |
 | Dashboard says PDFKit | Low | Server uses `pdf-lib`; label can stay |
 | Demo needs a send without waiting | Med | `ALLOW_DEMO_OFFSET=1` only; off by default |
@@ -151,8 +159,9 @@ flowchart TD
 
 - Next.js, a Base44 clinical database, Convex, and the unwired clinic CRUD (`listPatients`, `generateReport`, dashboard stats)
 - Presage SDK and camera frames
-- A packaged Zoom app, live WebRTC, GoDaddy API, Solana, Snowflake
-- Production HIPAA, real PHI, diagnosis codes, DSM criterion text
+- ElevenLabs text-to-speech / “play question” audio
+- A packaged Zoom app, Zoom timeline import, GoDaddy API, Solana, Snowflake
+- Production HIPAA, real PHI without `ALLOW_PHI`, diagnosis codes, DSM criterion text
 - A second emailed PHQ-9, send before 45:00, and a second email for the same session
 
 ## Definition of done

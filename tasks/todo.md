@@ -4,7 +4,7 @@ Requirements: `tasks/plan.md`. Vite UI stays. Node server under `server/` owns c
 
 Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Check: `node --check` on touched `.js` files · UI build: `npm run build`
 
-Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs via `fetch`. Synthetic fixtures only.
+Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
 ---
 
@@ -234,9 +234,9 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
-## Task 9: Gemini drafts
+## Task 9: Gemini drafts from transcript
 
-**Description:** Ask Gemini for draft events from transcript lines and the question list, then `ground` them. Tests use a recorded response. The request must not ask for a diagnosis code. Refuse a body marked `synthetic: false` unless `ALLOW_PHI=1`.
+**Description:** Ask Gemini for draft events from the session’s transcript lines (fixture or Scribe) plus the question list, then `ground` them. Tests use a recorded Gemini response. The request must not ask for a diagnosis code. Refuse a body marked `synthetic: false` unless `ALLOW_PHI=1`. Wire `POST .../drafts` in the live adapter when this task lands.
 
 **Acceptance criteria:**
 - [ ] A recorded response with real quotes becomes grounded drafts
@@ -246,13 +246,14 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Verification:**
 - [ ] Tests pass: `node --test server/test/gemini.test.js`
 - [ ] Build succeeds: `node --check server/gemini.js`
-- [ ] Manual check: with `GEMINI_API_KEY`, one synthetic ramble only
+- [ ] Manual check: with `GEMINI_API_KEY`, one synthetic transcript only
 
-**Dependencies:** Task 3
+**Dependencies:** Tasks 3, 10
 
 **Files likely touched:**
 - `server/gemini.js`
 - `server/fixtures/gemini-ramble-response.json`
+- `src/api/liveWorkspace.js`
 - `.env.example`
 - `server/test/gemini.test.js`
 
@@ -260,51 +261,53 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
-## Task 10: Zoom transcript file
+## Task 10: Full Scribe transcript lines
 
-**Description:** Convert a saved Zoom timeline JSON into the same `{ speaker, text, startMs }` lines. No network call and no Zoom app package.
+**Description:** Normalize the full ElevenLabs Scribe transcript into the same `{ t, speaker, text }` lines Task 3 already uses. Tests use a recorded Scribe payload (no live network). An empty transcript becomes no lines. Those lines must pass `ground` when quoted. Replaces the old Zoom timeline import.
 
 **Acceptance criteria:**
-- [ ] A fixture timeline becomes ordered lines that pass `ground`
-- [ ] An empty timeline becomes no lines
-- [ ] Those lines pass through Task 3 `ground`
+- [ ] A fixture Scribe transcript becomes ordered `{ t, speaker, text }` lines
+- [ ] An empty Scribe payload becomes no lines
+- [ ] Quotes from those lines pass through Task 3 `ground`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/zoom.test.js`
-- [ ] Build succeeds: `node --check server/zoom.js`
+- [ ] Tests pass: `node --test server/test/scribe-transcript.test.js`
+- [ ] Build succeeds: `node --check server/scribeTranscript.js`
 
-**Dependencies:** Task 3
+**Dependencies:** Tasks 3, 11
 
 **Files likely touched:**
-- `server/zoom.js`
-- `server/fixtures/zoom-resource.json`
-- `server/test/zoom.test.js`
+- `server/scribeTranscript.js`
+- `server/fixtures/scribe-full-transcript.json`
+- `server/test/scribe-transcript.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
 ---
 
-## Task 11: ElevenLabs prompt audio
+## Task 11: ElevenLabs Scribe real-time STT
 
-**Description:** `play` requests speech for that question’s `followUp` text only. No transcript in the body. No nudge means no request. Tests stub the HTTP call.
+**Description:** Live speech-to-text via ElevenLabs Scribe. Partial results append to the in-memory session transcript (`POST .../transcript/chunks`). No text-to-speech and no “play question” route. Tests stub the Scribe HTTP/stream call with recorded chunks. Live mic only with `ELEVENLABS_API_KEY` and human approval.
 
 **Acceptance criteria:**
-- [ ] The request body is the prompt string and not the transcript
-- [ ] No nudge means no request
-- [ ] The call URL is a text-to-speech endpoint, not a transcribe endpoint
+- [ ] Stubbed Scribe chunks append as `{ t, speaker, text }` on the session
+- [ ] `GET .../transcript` returns the accumulated lines
+- [ ] The integration calls a speech-to-text / Scribe endpoint, not a TTS endpoint
+- [ ] `playQuestion` stays unset (or is removed) in the live adapter
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/speak.test.js`
-- [ ] Build succeeds: `node --check server/speak.js`
-- [ ] Manual check: with `ELEVENLABS_API_KEY`, one synthetic prompt is spoken
+- [ ] Tests pass: `node --test server/test/scribe.test.js`
+- [ ] Build succeeds: `node --check server/scribe.js`
+- [ ] Manual check: with `ELEVENLABS_API_KEY`, one synthetic or approved live utterance appears in the transcript
 
-**Dependencies:** Task 2
+**Dependencies:** Task 3
 
 **Files likely touched:**
-- `server/speak.js`
+- `server/scribe.js`
+- `server/session.js`
 - `src/api/liveWorkspace.js`
 - `.env.example`
-- `server/test/speak.test.js`
+- `server/test/scribe.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -339,6 +342,6 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 ## Checkpoint: Demo
 
 - [ ] `node --test` passes
-- [ ] Synthetic path: playback events, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
+- [ ] Synthetic path: fixture or Scribe transcript → grounded Gemini drafts, keep and discard send nothing, send is refused before 45:00, one PDF email at or after 45:00, no second email
 - [ ] Tiger row when `DATABASE_URL` is set
-- [ ] Human approves before live audio, camera, or a real inbox
+- [ ] Human approves before a live microphone, real Scribe session, or a real inbox
