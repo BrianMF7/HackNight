@@ -42,13 +42,13 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Turn model candidates into bindings the scorer can trust. Each kept quote is a substring of the transcript, with the same `...` part rule as `server/ground.js`. Unknown criterion ids and quotes that are not in the transcript are dropped. A candidate with no quote is dropped.
 
 **Acceptance criteria:**
-- [ ] A quote that appears in a transcript line is kept with its `criterionId` and `t`
-- [ ] An invented quote, a missing quote, and an id outside `DEPRESSION_CRITERIA` are absent from the result
-- [ ] A quote split by `...` is kept only when every part appears in the transcript
+- [x] A quote that appears in a transcript line is kept with its `criterionId` and `t`
+- [x] An invented quote, a missing quote, and an id outside `DEPRESSION_CRITERIA` are absent from the result
+- [x] A quote split by `...` is kept only when every part appears in the transcript
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-bind.test.js`
-- [ ] Build succeeds: `node --check server/focus/bind.js`
+- [x] Tests pass: `node --test server/test/focus-bind.test.js`
+- [x] Build succeeds: `node --check server/focus/bind.js`
 
 **Dependencies:** Task 1
 

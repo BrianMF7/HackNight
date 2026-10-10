@@ -8,7 +8,7 @@ function quotesIn(evidence) {
   return [...String(evidence ?? "").matchAll(/"([^"]*)"/g)].map((match) => match[1]);
 }
 
-function quoteParts(quote) {
+export function quoteParts(quote) {
   return quote.split("...").map((part) => part.trim()).filter(Boolean);
 }
 
