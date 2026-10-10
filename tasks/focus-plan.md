@@ -110,12 +110,12 @@ Tasks 1–4 and Tasks 5–6 have no shared files, so the two people work at the 
 - [x] Task 1: Depression criteria and scorer
 - [x] Task 2: Quote binder
 - [x] Task 3: Focus agent request
-- [ ] Task 4: Gold transcripts
+- [x] Task 4: Gold transcripts
 
 ### Checkpoint: Agent
 
-- [ ] Focus unit tests pass with no network
-- [ ] Person 2 has not been blocked
+- [x] Focus unit tests pass with no network
+- [x] Person 2 has not been blocked
 
 ### Phase 2: Person 2, the add-on
 

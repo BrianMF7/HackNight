@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { DEPRESSION_CRITERIA } from '../focus/criteria.js';
 import { suggestBindings } from '../focus/agent.js';
+import { scoreFocus } from '../focus/score.js';
 
 const LINES = [
   { t: 1, speaker: 'patient', text: 'I have felt low and hopeless for weeks.' },
@@ -187,4 +188,69 @@ test('a Gemini body that names a focus and has no bindings throws BAD_GEMINI', a
     }),
     (err) => err.code === 'BAD_GEMINI',
   );
+});
+
+function loadGold(name) {
+  return JSON.parse(readFileSync(new URL(`../fixtures/${name}`, import.meta.url), 'utf8'));
+}
+
+async function runGold(fixture) {
+  const previous = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = 'test-key';
+  let calls = 0;
+  try {
+    const result = await suggestBindings(fixture.lines, DEPRESSION_CRITERIA, {
+      synthetic: true,
+      fetch: async () => {
+        calls += 1;
+        return { ok: true, json: async () => fixture.body };
+      },
+    });
+    return { result, calls };
+  } finally {
+    restore('GEMINI_API_KEY', previous);
+  }
+}
+
+function corpusOf(fixture) {
+  return fixture.lines.map((line) => line.text).join('\n');
+}
+
+test('the positive gold transcript surfaces depression and keeps only transcript quotes', async () => {
+  const fixture = loadGold('focus-positive.json');
+  const { result, calls } = await runGold(fixture);
+  assert.equal(calls, 1);
+  const scored = scoreFocus(result.bindings);
+  assert.equal(scored?.id, 'depression');
+  const corpus = corpusOf(fixture);
+  const ids = new Set(result.bindings.map((binding) => binding.criterionId));
+  assert.equal(ids.has('dep-mood'), true);
+  assert.equal(ids.has('dep-interest'), true);
+  assert.equal(result.bindings.length > 0, true);
+  for (const binding of result.bindings) {
+    assert.equal(corpus.includes(binding.evidence), true);
+  }
+  assert.equal(result.bindings.some((binding) => binding.evidence === 'I have a diagnosis of depression'), false);
+  assert.equal(Object.hasOwn(result, 'id'), false);
+});
+
+test('the negative gold transcript surfaces nothing', async () => {
+  const fixture = loadGold('focus-negative.json');
+  const { result, calls } = await runGold(fixture);
+  assert.equal(calls, 1);
+  assert.equal(scoreFocus(result.bindings), null);
+  const corpus = corpusOf(fixture);
+  for (const binding of result.bindings) {
+    assert.equal(corpus.includes(binding.evidence), true);
+  }
+});
+
+test('gold fixtures are not loaded by session create or the form-draft agent', () => {
+  const session = readFileSync(new URL('../session.js', import.meta.url), 'utf8');
+  const drafts = readFileSync(new URL('../gemini.js', import.meta.url), 'utf8');
+  const index = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
+  for (const source of [session, drafts, index]) {
+    assert.equal(source.includes('focus-positive'), false);
+    assert.equal(source.includes('focus-negative'), false);
+  }
 });

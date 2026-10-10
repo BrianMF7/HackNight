@@ -94,13 +94,13 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 **Description:** Two saved transcripts stand in for the clinician yes/no the idea doc asks for. The positive one binds the required pair and the scorer surfaces depression. The negative one does not, and the scorer stays quiet. Both go through the recorded agent body and the binder, with fetch injected.
 
 **Acceptance criteria:**
-- [ ] `server/fixtures/focus-positive.json` surfaces `{ id: "depression" }` and every kept quote is a substring of that fixture
-- [ ] `server/fixtures/focus-negative.json` surfaces nothing
-- [ ] Neither fixture is loaded by `POST /api/sessions` or by the form-draft agent
+- [x] `server/fixtures/focus-positive.json` surfaces `{ id: "depression" }` and every kept quote is a substring of that fixture
+- [x] `server/fixtures/focus-negative.json` surfaces nothing
+- [x] Neither fixture is loaded by `POST /api/sessions` or by the form-draft agent
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/focus-agent.test.js`
-- [ ] Build succeeds: `node --check server/focus/agent.js`
+- [x] Tests pass: `node --test server/test/focus-agent.test.js`
+- [x] Build succeeds: `node --check server/focus/agent.js`
 
 **Dependencies:** Task 3
 
@@ -115,9 +115,9 @@ Definition of Done for each task: acceptance criteria met, a test that fails wit
 
 ## Checkpoint: Agent
 
-- [ ] `node --test server/test/focus-score.test.js server/test/focus-bind.test.js server/test/focus-agent.test.js` passes
-- [ ] Those tests do not open a port and do not call the network
-- [ ] Person 1 has not edited Person 2’s files
+- [x] `node --test server/test/focus-score.test.js server/test/focus-bind.test.js server/test/focus-agent.test.js` passes
+- [x] Those tests do not open a port and do not call the network
+- [x] Person 1 has not edited Person 2’s files
 
 ---
 
