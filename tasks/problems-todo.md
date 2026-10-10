@@ -258,13 +258,13 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 **Description:** `src/lib/*.test.js` cannot see `node:test` because `"types": []` blocks `@types/node`. `tiger-db.js` uses `process` and `postgres`. Reference Node types from those files only. Install the already-declared `postgres` package if the module still does not resolve. Do not add a dependency entry.
 
 **Acceptance criteria:**
-- [ ] Widened check over `src/**/*.js` and `src/**/*.jsx` exits 0
-- [ ] `npm run typecheck` still exits 0 (these files stay outside that include)
+- [x] Widened check over `src/**/*.js` and `src/**/*.jsx` exits 0
+- [x] `npm run typecheck` still exits 0 (these files stay outside that include)
 
 **Verification:**
-- [ ] Widened `tsc`
-- [ ] `npm run typecheck`
-- [ ] `node --test src/lib/*.test.js`
+- [x] Widened `tsc`
+- [x] `npm run typecheck`
+- [x] `node --test src/lib/*.test.js`
 
 **Dependencies:** Task 5 (Vite reference must not be undone)
 
@@ -279,9 +279,9 @@ RED for these tasks is the diagnostic named below. It is a type or lint failure,
 
 ## Checkpoint: Complete
 
-- [ ] `npm run typecheck` exits 0
-- [ ] `npx eslint .` exits 0
-- [ ] Widened `tsc` over `src` exits 0
-- [ ] `npm run build` exits 0
-- [ ] `node --test server/test/*.test.js` and `node --test src/lib/*.test.js` pass
-- [ ] Browser spot-check if a dev server is already running
+- [x] `npm run typecheck` exits 0
+- [x] `npx eslint .` exits 0
+- [x] Widened `tsc` over `src` exits 0
+- [x] `npm run build` exits 0
+- [x] `node --test server/test/*.test.js` and `node --test src/lib/*.test.js` pass
+- [x] Browser spot-check if a dev server is already running

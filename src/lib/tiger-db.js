@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import postgres from 'postgres';
 
 // Only connect if DATABASE_URL is set (per your plan)
