@@ -47,15 +47,18 @@ async function runFocus(record, fetchImpl) {
     const scored = scoreFocus(bindings);
     const focus = ensure(record);
     focus.seen = lines.length;
+    if (focus.decision === "no") return { status: 200, body: view(focus, false) };
     focus.bindings = bindings;
     focus.focuses = scored ? [scored] : [];
     return { status: 200, body: view(focus, false) };
   } catch (err) {
     const code = err?.code;
-    if (code === "PHI_REFUSED" || code === "GEMINI_HTTP" || code === "BAD_GEMINI" || code === "NO_GEMINI_KEY") {
-      return { status: 200, body: { ...view(ensure(record), false), focuses: [], code } };
-    }
-    throw err;
+    const reported = code === "PHI_REFUSED" || code === "NO_GEMINI_KEY" || code === "GEMINI_HTTP" || code === "BAD_GEMINI";
+    if (!reported) throw err;
+    const focus = ensure(record);
+    // A model attempt spends the line gap. A refusal before fetch keeps reporting its code.
+    if (code === "GEMINI_HTTP" || code === "BAD_GEMINI") focus.seen = lines.length;
+    return { status: 200, body: { ...view(focus, false), code } };
   }
 }
 

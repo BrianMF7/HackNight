@@ -236,8 +236,93 @@ test("a failed focus fetch returns GEMINI_HTTP once and keeps the stored lines",
     assert.equal(failing.calls.length, 1);
     const stored = await fetch(`${failing.base}/api/sessions/${id}/transcript`, { headers: failing.headers });
     assert.deepEqual(await stored.json(), positive.lines);
+    const again = await fetch(`${failing.base}/api/sessions/${id}/focus`, { method: "POST", headers: failing.headers, body: "{}" });
+    const skipped = await again.json();
+    assert.equal(skipped.skipped, true);
+    assert.deepEqual(skipped.focuses, []);
+    assert.equal(failing.calls.length, 1);
   } finally {
     await failing.close();
+    restore("ALLOW_PHI", previousPhi);
+    restore("GEMINI_API_KEY", previousKey);
+  }
+});
+
+test("a No during an in-flight focus call stays hidden on later polls", async () => {
+  const previousPhi = process.env.ALLOW_PHI;
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.ALLOW_PHI = "1";
+  process.env.GEMINI_API_KEY = "test-key";
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  let started;
+  const startedGate = new Promise((resolve) => { started = resolve; });
+  const live = await listen(async () => {
+    started();
+    await gate;
+    return { ok: true, json: async () => positive.body };
+  });
+  try {
+    const id = await liveSession(live.base, live.headers, positive.lines);
+    const pending = fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" });
+    await startedGate;
+    const no = await fetch(`${live.base}/api/sessions/${id}/focus/decision`, {
+      method: "POST",
+      headers: live.headers,
+      body: JSON.stringify({ focusId: "depression", decision: "no" }),
+    });
+    const hidden = await no.json();
+    assert.equal(hidden.decision, "no");
+    assert.deepEqual(hidden.focuses, []);
+    release();
+    const finished = await (await pending).json();
+    assert.equal(finished.decision, "no");
+    assert.deepEqual(finished.focuses, []);
+    const again = await (await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" })).json();
+    assert.equal(again.skipped, true);
+    assert.equal(again.decision, "no");
+    assert.deepEqual(again.focuses, []);
+    assert.deepEqual((await (await fetch(`${live.base}/api/sessions/${id}/focus/quotes`, { headers: live.headers })).json()).quotes, []);
+    assert.equal(live.calls.length, 1);
+  } finally {
+    await live.close();
+    restore("ALLOW_PHI", previousPhi);
+    restore("GEMINI_API_KEY", previousKey);
+  }
+});
+
+test("a failed rescore keeps the stored focus and does not fetch again", async () => {
+  const previousPhi = process.env.ALLOW_PHI;
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.ALLOW_PHI = "1";
+  process.env.GEMINI_API_KEY = "test-key";
+  let n = 0;
+  const live = await listen(async () => {
+    n += 1;
+    if (n === 1) return { ok: true, json: async () => positive.body };
+    return { ok: false, json: async () => ({}) };
+  });
+  try {
+    const id = await liveSession(live.base, live.headers, positive.lines);
+    await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" });
+    const record = findSession(id);
+    record.transcript.push(
+      { t: 100, speaker: "Patient", text: "Still low." },
+      { t: 101, speaker: "Patient", text: "Still no interest." },
+      { t: 102, speaker: "Patient", text: "Still lasting." },
+      { t: 103, speaker: "Patient", text: "Another line." },
+    );
+    const failed = await (await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" })).json();
+    assert.equal(failed.code, "GEMINI_HTTP");
+    assert.equal(failed.focuses[0].id, "depression");
+    const quotes = await (await fetch(`${live.base}/api/sessions/${id}/focus/quotes`, { headers: live.headers })).json();
+    assert.equal(quotes.quotes.length > 0, true);
+    const again = await (await fetch(`${live.base}/api/sessions/${id}/focus`, { method: "POST", headers: live.headers, body: "{}" })).json();
+    assert.equal(again.skipped, true);
+    assert.equal(again.focuses[0].id, "depression");
+    assert.equal(live.calls.length, 2);
+  } finally {
+    await live.close();
     restore("ALLOW_PHI", previousPhi);
     restore("GEMINI_API_KEY", previousKey);
   }
