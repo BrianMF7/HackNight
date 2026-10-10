@@ -61,7 +61,7 @@ Fill these in the live adapter only in the task that implements the handler.
 - `POST /api/sessions/:sessionId/actions` → `{ ok: true }`
 - `POST /api/sessions/:sessionId/retain` → `{ ok: true, status: "draft_retained", sent: false }`
 - `POST /api/sessions/:sessionId/discard` → `{ ok: true }`
-- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, duplicate }` or `{ allowed: false, sent: false, reasons }` with HTTP 200. Server modules and tests are in; the live adapter still has `requestHandoff: null`. Reasons today are code strings; the review alert expects `{ code, message }` objects (mock already returns objects).
+- `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, duplicate }` or `{ allowed: false, sent: false, reasons }` with HTTP 200. The live adapter posts that route. Reasons are `{ code, message }` objects the review alert prints.
 - `GET /api/db/ping` → `{ ok: true, db, ts }` when `DATABASE_URL` is set; 503 `NO_DATABASE` when unset. Connectivity only; not the Task 12 store.
 - `POST /api/stt/token` → `{ token, wsUrl }` single-use ElevenLabs realtime STT token
 - `POST /api/sessions/:sessionId/transcript-lines` → append `{ t, speaker, text }` from a committed STT line. On a live session the same response is `{ t, speaker, text, seq, drafts }` (or `drafts: []` plus `code` when PHI is off or Gemini fails). The line is stored either way.
@@ -105,7 +105,7 @@ flowchart TD
   send --> tiger
 ```
 
-**Current slice:** wire live `requestHandoff` (and reason shape for the review alert), then Task 12. Tasks 1–9c and 11 are in the tree. Task 10 is not on this path. `GET /api/db/ping` (`server/db.js`) is in; the sent-packet store is not.
+**Current slice:** Tasks 1–12 are in the tree, including live handoff and the Tiger store. Task 10 is not on the live path. Task 11’s microphone check still needs a person speaking.
 
 **Parallel note:** Live handoff wiring is the remaining glue on Tasks 7–8. Task 12 depends on a successful send path. Task 10 stays deferred.
 
@@ -198,9 +198,9 @@ Task 10 is not a step here. Task 11 already commits `{ t, speaker, text }`.
 
 ### Later, not this slice
 
-- [ ] Live handoff glue: set `workspaceEndpoints.requestHandoff` and return `{ code, message }` reasons the review alert prints
+- [x] Live handoff glue: set `workspaceEndpoints.requestHandoff` and return `{ code, message }` reasons the review alert prints
 - [x] Task 10: Full Scribe transcript file (normalizer only; not required for 9c)
-- [ ] Task 12: Tiger stores the sent packet (`server/store.js` absent; `server/db.js` + `GET /api/db/ping` already land connectivity)
+- [x] Task 12: Tiger stores the sent packet (`server/store.js`; one synthetic row on `hacknight-dev`)
 
 ### Checkpoint: Demo
 

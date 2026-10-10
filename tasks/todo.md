@@ -6,7 +6,7 @@ Test: `node --test` · Focused: `node --test server/test/<file>.test.js` · Chec
 
 Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`, `nodemailer`, `pg`. Gemini and ElevenLabs Scribe (STT) via `fetch`. Synthetic fixtures for tests; live mic only after human approval.
 
-**Current slice:** Wire live `requestHandoff` (still `null`) and reason `{ code, message }` objects for the review alert, then Task 12. Tasks 1–9c, 10, and 11 are in the tree. Task 4 and Tasks 6–8 server modules landed from teammate merges. Task 10 normalizes a recorded Scribe file and is not on the live path. `GET /api/db/ping` exists; `server/store.js` does not.
+**Current slice:** Tasks 1–12 are in the tree. Live `requestHandoff` posts to `/api/sessions/:sessionId/handoff` and refusal reasons are `{ code, message }`. Task 12 has one synthetic row on Tiger `hacknight-dev`. Task 11’s mic check still needs a person at the microphone.
 
 ---
 
@@ -186,8 +186,8 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 - [x] Each of the four cases produces its reason code (`SEND_GATE_NOT_MET`, `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`)
 - [x] Refused handoff records zero emails
 - [x] Client-supplied elapsed and confirmedIds do not bypass the gate
-- [ ] Live adapter `requestHandoff` is `{ method: "POST", path: "/api/sessions/:sessionId/handoff" }` (still `null`)
-- [ ] Refusal `reasons` are `{ code, message }` objects (`BlockedHandoffAlert` / mock); server currently returns code strings
+- [x] Live adapter `requestHandoff` is `{ method: "POST", path: "/api/sessions/:sessionId/handoff" }`
+- [x] Refusal `reasons` are `{ code, message }` objects (`BlockedHandoffAlert` / mock)
 
 **Verification:**
 - [x] Tests pass: `node --test server/test/handoff-gate.test.js`
@@ -199,7 +199,7 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Files present:**
 - `server/handoff.js`, `server/clock.js`, wired from `server/index.js`
 - `server/test/handoff-gate.test.js`
-- `src/api/liveWorkspace.js` (`requestHandoff` still null)
+- `src/api/liveWorkspace.js` (`requestHandoff` wired; `playQuestion` stays null)
 
 **Estimated scope:** Medium: 3–5 files
 
@@ -557,21 +557,21 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 **Already in tree (connectivity only, not this task):** `server/db.js`, `GET /api/db/ping`, `server/test/db.test.js`, `postgres` in `package.json`, `DATABASE_URL` in `.env.example`. Missing `DATABASE_URL` → 503 `NO_DATABASE`.
 
 **Acceptance criteria:**
-- [ ] A successful send writes one row whose PDF bytes match the mailed file, plus nudge rows
-- [ ] A refused send writes nothing
-- [ ] Bound parameters do not include raw audio or the full transcript
+- [x] A successful send writes one row whose PDF bytes match the mailed file, plus nudge rows
+- [x] A refused send writes nothing
+- [x] Bound parameters do not include raw audio or the full transcript
 
 **Verification:**
 - [x] DB ping tests pass: `node --test server/test/db.test.js` (connectivity only)
-- [ ] Tests pass: `node --test server/test/store.test.js`
-- [ ] Build succeeds: `node --check server/store.js`
-- [ ] Manual check: with Tiger `DATABASE_URL`, one synthetic send is visible
+- [x] Tests pass: `node --test server/test/store.test.js`
+- [x] Build succeeds: `node --check server/store.js`
+- [x] Manual check: with Tiger `DATABASE_URL`, one synthetic send is visible (`hacknight-dev`, case `2d6ec7df-376b-452a-8a82-ff483b377abe`, 4302 PDF bytes, nudge `AIQ-005`)
 
 **Dependencies:** Tasks 7, 8 (and live handoff glue if the demo path must go through the UI)
 
 **Files present / still needed:**
-- Present: `server/db.js`, `server/test/db.test.js`, `package.json` (`postgres`), `.env.example`
-- Needed: `server/store.js`, `server/test/store.test.js`, handoff hook after a successful send
+- Present: `server/db.js`, `server/store.js`, `server/test/db.test.js`, `server/test/store.test.js`, `package.json` (`postgres`), `.env.example`
+- Handoff calls `storeSentPacket` only after `sent: true`. Live adapter `requestHandoff` is wired.
 
 **Estimated scope:** Medium: 3–5 files
 

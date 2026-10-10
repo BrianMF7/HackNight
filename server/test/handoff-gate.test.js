@@ -4,6 +4,7 @@ import { createServer } from '../index.js';
 import { findSession } from '../session.js';
 import { getTemplate } from '../template.js';
 import { createFakeMailer } from '../send.js';
+import { workspaceEndpoints } from '../../src/api/liveWorkspace.js';
 import { handoffReasons } from '../handoff.js';
 
 function record(overrides = {}) {
@@ -13,24 +14,48 @@ function record(overrides = {}) {
   return { templateId: template.id, startedAt: 10_000, therapist: { email: 'therapist@example.com' }, answers, ...overrides };
 }
 
+function requiredCount() {
+  return getTemplate('adult-intake-v1').pages
+    .flatMap((page) => page.sections.flatMap((section) => section.questions))
+    .filter((question) => question.required).length;
+}
+
+test('live requestHandoff posts to the session handoff route', () => {
+  assert.deepEqual(workspaceEndpoints.requestHandoff, {
+    method: 'POST',
+    path: '/api/sessions/:sessionId/handoff',
+  });
+  assert.equal(workspaceEndpoints.playQuestion, null);
+});
+
 test('gate rejects under 45 minutes and accepts exactly 45', () => {
-  assert.deepEqual(handoffReasons(record(), 10_000 + 44 * 60_000 + 59_000), ['SEND_GATE_NOT_MET']);
+  assert.deepEqual(handoffReasons(record(), 10_000 + 44 * 60_000 + 59_000), [
+    { code: 'SEND_GATE_NOT_MET', message: 'At least 45 minutes are required before handoff.' },
+  ]);
   assert.deepEqual(handoffReasons(record(), 10_000 + 45 * 60_000), []);
 });
 test('all four reasons are returned for missing confirmations, safety, recipient and clock', () => {
   const data = record({ therapist: { email: '' }, answers: {} });
-  assert.deepEqual(handoffReasons(data, 10_000), ['SEND_GATE_NOT_MET','REQUIRED_UNCONFIRMED','SAFETY_UNRESOLVED','NO_RECIPIENT']);
+  assert.deepEqual(handoffReasons(data, 10_000), [
+    { code: 'SEND_GATE_NOT_MET', message: 'At least 45 minutes are required before handoff.' },
+    { code: 'REQUIRED_UNCONFIRMED', message: `${requiredCount()} required question(s) are not clinician-confirmed.` },
+    { code: 'SAFETY_UNRESOLVED', message: 'A required safety item is unresolved.' },
+    { code: 'NO_RECIPIENT', message: 'No therapist recipient is assigned.' },
+  ]);
 });
 test('a draft, an empty confirmed answer, and a safety draft block handoff', () => {
   const data = record();
   data.answers['AIQ-001'] = { status: 'draft', answer: 'unverified' };
   data.answers['SAF-001'] = { status: 'confirmed', answer: '   ' };
-  assert.deepEqual(handoffReasons(data, 10_000 + 45 * 60_000), ['REQUIRED_UNCONFIRMED','SAFETY_UNRESOLVED']);
+  assert.deepEqual(handoffReasons(data, 10_000 + 45 * 60_000), [
+    { code: 'REQUIRED_UNCONFIRMED', message: '2 required question(s) are not clinician-confirmed.' },
+    { code: 'SAFETY_UNRESOLVED', message: 'A required safety item is unresolved.' },
+  ]);
 });
 
 test('HTTP handoff ignores forged client time and confirmations; authorized send is once', async () => {
   const mailer = createFakeMailer();
-  const server = createServer({ token: 'synthetic-test', handoffMailer: mailer });
+  const server = createServer({ token: 'synthetic-test', handoffMailer: mailer, sql: null });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   const url = `http://127.0.0.1:${server.address().port}`;
   const post = (route, body) => fetch(url + route, { method: 'POST', headers: { Authorization: 'Bearer synthetic-test', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
