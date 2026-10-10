@@ -1,12 +1,13 @@
-import React, { useState } from "react";
-import { Settings, Loader2, CheckCircle2 } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Settings, Loader2, CheckCircle2, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { getBackendUrl, setBackendUrl, getBackendToken, setBackendToken } from "@/api/config";
-import { api } from "@/api";
+import { api, workspaceApi } from "@/api";
+import { startRealtimeStt } from "@/lib/realtimeStt";
 import ApiErrorAlert from "./ApiErrorAlert";
 import useApiMode from "./useApiMode";
 
@@ -17,6 +18,9 @@ export default function ConnectionSettings() {
   const [testing, setTesting] = useState(false);
   const [error, setError] = useState(null);
   const [ok, setOk] = useState(false);
+  const [sttBusy, setSttBusy] = useState(false);
+  const [sttLine, setSttLine] = useState("");
+  const sttStop = useRef(null);
   const live = mode === "live";
 
   const save = () => { setBackendUrl(url); setBackendToken(token); };
@@ -26,6 +30,33 @@ export default function ConnectionSettings() {
     setTesting(true); setError(null); setOk(false);
     try { await api.ping(); setOk(true); } catch (e) { setError(e); }
     setTesting(false);
+  };
+
+  const testStt = async () => {
+    save();
+    setError(null);
+    setSttLine("");
+    if (sttStop.current) {
+      sttStop.current.stop();
+      sttStop.current = null;
+      setSttBusy(false);
+      return;
+    }
+    setSttBusy(true);
+    try {
+      const { wsUrl } = await workspaceApi.getSttToken();
+      const handle = await startRealtimeStt({
+        wsUrl,
+        onPartial: (text) => setSttLine(text),
+        onCommitted: (text) => setSttLine(`✓ ${text}`),
+        onError: (e) => setError(e),
+        onClose: () => { sttStop.current = null; setSttBusy(false); },
+      });
+      sttStop.current = handle;
+    } catch (e) {
+      setError(e);
+      setSttBusy(false);
+    }
   };
 
   return (
@@ -56,8 +87,13 @@ export default function ConnectionSettings() {
           </div>
           <ApiErrorAlert error={error} title="Connection test failed" />
           {ok && <p className="flex items-center gap-2 text-sm text-primary"><CheckCircle2 className="h-4 w-4" />Backend responded.</p>}
+          {sttLine && <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">{sttLine}</p>}
           <Button onClick={test} disabled={testing} className="w-full">
             {testing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save and test connection
+          </Button>
+          <Button onClick={testStt} disabled={!live || testing} variant="outline" className="w-full gap-2">
+            {sttBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mic className="h-4 w-4" />}
+            {sttBusy ? "Stop speech-to-text test" : "Test realtime speech-to-text"}
           </Button>
         </div>
       </DialogContent>

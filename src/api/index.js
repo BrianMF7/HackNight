@@ -24,6 +24,8 @@ const WORKSPACE_METHODS = [
   "createSession",
   "getTranscript",
   "getEvents",
+  "appendTranscriptLine",
+  "getSttToken",
   "recordClinicianAction",
   "retainDraft",
   "discardDraft",

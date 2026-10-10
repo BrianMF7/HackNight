@@ -5,7 +5,7 @@ import { getMode } from "@/api/config";
 // Honest status: in demo mode nothing real is connected. Real integrations live in the separate backend.
 const items = [
   ["Gemini", "Transcript analysis"],
-  ["ElevenLabs", "Spoken question prompts"],
+  ["ElevenLabs", "Realtime speech-to-text"],
   ["Presage", "Clinician focus reminders"],
   ["Tiger Data", "Session and PDF records"],
   ["Zoom transcripts", "Transcript files / fixtures"],

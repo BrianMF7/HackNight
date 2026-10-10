@@ -9,7 +9,10 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc -p ./jsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node --env-file=.env server/index.js",
+    "test:server": "node --test server/test/*.test.js",
+    "test:stt": "node --test server/test/stt.test.js"
   },
   "dependencies": {
     "@base44/sdk": "^0.8.52",

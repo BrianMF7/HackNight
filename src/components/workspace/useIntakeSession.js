@@ -89,9 +89,18 @@ export default function useIntakeSession(session) {
     setAnswers((a) => ({ ...a, [fieldId]: { ...(a[fieldId] || {}), status: "draft", answer: text, clinicianEdited: true } }));
   };
 
+  const appendTranscriptLine = useCallback(async (line) => {
+    setTranscript((rows) => [...rows, line]);
+    try {
+      await workspaceApi.appendTranscriptLine({ sessionId: session.id, ...line });
+    } catch {
+      // Live STT still shows in the UI if the persist route is unavailable.
+    }
+  }, [session?.id]);
+
   return {
     elapsed, playhead, answers, questionState, confirmedIds, outstanding, notifications, snoozed, transcript,
     connection, setConnection, paused, setPaused,
-    dismissNotification, snooze, confirm, saveEdit,
+    dismissNotification, snooze, confirm, saveEdit, appendTranscriptLine,
   };
 }

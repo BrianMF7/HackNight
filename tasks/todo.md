@@ -13,13 +13,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `server/index.js` answers `GET /api/ping`. Missing or wrong bearer is 401. CORS allows the Vite origin. Set `endpoints.ping` in `src/api/endpoints.js`.
 
 **Acceptance criteria:**
-- [ ] Connection settings “Save and test” can succeed against the local server
-- [ ] A bad token returns 401 and the UI shows that error
-- [ ] `endpoints.ping` is `{ method: "GET", path: "/api/ping" }`
+- [x] Connection settings “Save and test” can succeed against the local server
+- [x] A bad token returns 401 and the UI shows that error
+- [x] `endpoints.ping` is `{ method: "GET", path: "/api/ping" }`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/ping.test.js`
-- [ ] Build succeeds: `node --check server/index.js`
+- [x] Tests pass: `node --test server/test/ping.test.js`
+- [x] Build succeeds: `node --check server/index.js`
 - [ ] Manual check: connection dialog against `http://localhost:8787`
 
 **Dependencies:** None
@@ -40,13 +40,13 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 **Description:** `GET /api/templates` and `GET /api/templates/:templateId` return `adult-intake-v1` with the same question ids, `required`, and `safety` flags as `src/api/templates/adultIntake.js`. Brief intake and PHQ-9 stay `available: false`.
 
 **Acceptance criteria:**
-- [ ] A contract test fails if a required or safety id drifts from the frontend file
-- [ ] Unknown template id is 404
-- [ ] Brief intake and PHQ-9 list as unavailable
+- [x] A contract test fails if a required or safety id drifts from the frontend file
+- [x] Unknown template id is 404
+- [x] Brief intake and PHQ-9 list as unavailable
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/template.test.js`
-- [ ] Build succeeds: `node --check server/template.js`
+- [x] Tests pass: `node --test server/test/template.test.js`
+- [x] Build succeeds: `node --check server/template.js`
 
 **Dependencies:** Task 1
 
@@ -284,27 +284,42 @@ Stack: Node ESM, `node:test`, `node:http`. Add when a task needs them: `pdf-lib`
 
 ---
 
-## Task 11: ElevenLabs prompt audio
+## Task 11: ElevenLabs realtime speech-to-text
 
-**Description:** `play` requests speech for that question’s `followUp` text only. No transcript in the body. No nudge means no request. Tests stub the HTTP call.
+**Description:** Live mic audio is transcribed with ElevenLabs Scribe realtime. The server mints a single-use token (`realtime_scribe`); the browser opens the STT WebSocket with that token so `ELEVENLABS_API_KEY` never reaches the client. Committed lines use the workspace shape `{ t, speaker, text }`.
+
+**Setup:**
+- [x] Create an ElevenLabs API key at https://elevenlabs.io/app/settings/api-keys
+- [x] Put it in local `.env`: `ELEVENLABS_API_KEY=...`
+- [x] Clinical server env: `BACKEND_TOKEN`, `PORT=8787`, `CORS_ORIGIN=http://localhost:5173`
+- [x] Run with env loaded: `npm run server`
+- [x] Focused tests: `npm run test:stt`
+
+**Contract:**
+- `POST /api/stt/token` (bearer) → `{ token, wsUrl }` via `POST https://api.elevenlabs.io/v1/single-use-token/realtime_scribe`
+- Browser: `wss://api.elevenlabs.io/v1/speech-to-text/realtime?model_id=scribe_v2_realtime&token=...&commit_strategy=vad`
+- Live workspace mic streams PCM; committed text appends to transcript (+ `POST .../transcript-lines`)
+- Connection settings: “Test realtime speech-to-text” in live mode
 
 **Acceptance criteria:**
-- [ ] The request body is the prompt string and not the transcript
-- [ ] No nudge means no request
-- [ ] The call URL is a text-to-speech endpoint, not a transcribe endpoint
+- [x] Token mint URL is `realtime_scribe`, not a TTS path
+- [x] WebSocket URL is speech-to-text realtime, not text-to-speech
+- [x] Missing API key does not call the network
+- [x] Bearer required on `/api/stt/token`
 
 **Verification:**
-- [ ] Tests pass: `node --test server/test/speak.test.js`
-- [ ] Build succeeds: `node --check server/speak.js`
-- [ ] Manual check: with `ELEVENLABS_API_KEY`, one synthetic prompt is spoken
+- [x] Tests pass: `npm run test:stt`
+- [x] Build succeeds: `node --check server/stt.js`
+- [ ] Manual check: live mode + mic on, hear speech become transcript lines
 
-**Dependencies:** Task 2
+**Dependencies:** Task 2. Thin live `POST /api/sessions` stub included so the workspace can open in live mode.
 
 **Files likely touched:**
-- `server/speak.js`
-- `src/api/liveWorkspace.js`
+- `server/stt.js`, `server/session.js`, `server/index.js`
+- `server/test/stt.test.js`
+- `src/lib/realtimeStt.js`
+- `src/api/liveWorkspace.js`, `src/components/workspace/VideoPane.jsx`
 - `.env.example`
-- `server/test/speak.test.js`
 
 **Estimated scope:** Medium: 3–5 files
 

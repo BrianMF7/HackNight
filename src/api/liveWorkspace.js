@@ -1,21 +1,23 @@
 // LIVE MODE ONLY. Calls the real Node.js backend for intake sessions.
 // Every route comes from workspaceEndpoints; unset routes are refused, never guessed.
 // The backend is authoritative for required-field, safety, recipient and 45-minute rules.
-import ApiError from "./ApiError";
-import { getBackendUrl, getBackendToken } from "./config";
+import ApiError from "./ApiError.js";
+import { getBackendUrl, getBackendToken } from "./config.js";
 
 // TODO: fill from the backend team's documented contract.
 export const workspaceEndpoints = {
-  getTemplates: null,
-  getTemplate: null,
-  createSession: null,
-  getTranscript: null,
-  getEvents: null, // or a stream/poll route that returns answer updates
+  getTemplates: { method: "GET", path: "/api/templates" },
+  getTemplate: { method: "GET", path: "/api/templates/:templateId" },
+  createSession: { method: "POST", path: "/api/sessions" },
+  getTranscript: { method: "GET", path: "/api/sessions/:sessionId/transcript" },
+  getEvents: { method: "GET", path: "/api/sessions/:sessionId/events" },
+  appendTranscriptLine: { method: "POST", path: "/api/sessions/:sessionId/transcript-lines" },
+  getSttToken: { method: "POST", path: "/api/stt/token" },
   recordClinicianAction: null,
   retainDraft: null,
   discardDraft: null,
   requestHandoff: null,
-  playQuestion: null, // backend-owned ElevenLabs prompt audio
+  playQuestion: null,
 };
 
 const fill = (path, params = {}) => path.replace(/:(\w+)/g, (_, k) => encodeURIComponent(params[k] ?? ""));
@@ -49,6 +51,9 @@ export const liveWorkspace = {
   createSession: (p) => request("createSession", { body: p }),
   getTranscript: ({ sessionId }) => request("getTranscript", { params: { sessionId } }),
   getEvents: ({ sessionId }) => request("getEvents", { params: { sessionId } }),
+  appendTranscriptLine: ({ sessionId, t, speaker, text }) =>
+    request("appendTranscriptLine", { params: { sessionId }, body: { t, speaker, text } }),
+  getSttToken: () => request("getSttToken"),
   recordClinicianAction: (p) => request("recordClinicianAction", { params: { sessionId: p.sessionId }, body: p }),
   retainDraft: ({ sessionId }) => request("retainDraft", { params: { sessionId } }),
   discardDraft: ({ sessionId }) => request("discardDraft", { params: { sessionId } }),

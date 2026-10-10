@@ -102,9 +102,11 @@ export default function Workspace() {
             <ResizablePanel defaultSize={45} minSize={25}>
               <VideoPane
                 session={session}
+                sessionInfo={info}
                 patientLabel={info.patientLabel}
                 onEnd={() => setReviewOpen(true)}
                 onSimulateDisconnect={() => session.setConnection("patient_left")}
+                onCommittedTranscript={session.appendTranscriptLine}
               />
             </ResizablePanel>
             <ResizableHandle withHandle />

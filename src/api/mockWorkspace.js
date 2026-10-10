@@ -41,8 +41,16 @@ export const mockWorkspace = {
     return { ...s, invitationLink: `${window.location.origin}/join/${s.id}` };
   },
 
-  // Demo stub: real audio comes from the backend's ElevenLabs integration. Only the question prompt is ever supplied.
   async playQuestion() { await delay(200); return { demo: true, audioUrl: null }; },
+
+  // Realtime STT needs live mode + the Node server minting a single-use ElevenLabs token.
+  async getSttToken() {
+    const err = new Error("Realtime speech-to-text needs live backend mode.");
+    err.code = "MOCK_MODE";
+    throw err;
+  },
+
+  async appendTranscriptLine() { await delay(50); return { ok: true, demo: true }; },
 
   async getTranscript() { await delay(100); return transcript; },
   async getEvents() { await delay(100); return events; },

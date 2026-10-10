@@ -51,7 +51,8 @@ Fill these in the live adapter only in the task that implements the handler.
 - `POST /api/sessions/:sessionId/retain` → `{ ok: true, status: "draft_retained", sent: false }`
 - `POST /api/sessions/:sessionId/discard` → `{ ok: true }`
 - `POST /api/sessions/:sessionId/handoff` → `{ allowed: true, sent: true, to }` or `{ allowed: false, reasons: [{ code, message }] }` with HTTP 200
-- `POST /api/sessions/:sessionId/play` → `{ audioUrl }` from prompt text only
+- `POST /api/stt/token` → `{ token, wsUrl }` single-use ElevenLabs realtime STT token
+- `POST /api/sessions/:sessionId/transcript-lines` → append `{ t, speaker, text }` from committed STT
 
 Refusal reasons the review alert already prints verbatim: `REQUIRED_UNCONFIRMED`, `SAFETY_UNRESOLVED`, `NO_RECIPIENT`, `SEND_GATE_NOT_MET`. Auth and missing session stay 401 and 404 with `{ message, code }`.
 
@@ -71,7 +72,7 @@ flowchart TD
   send[Task8 One PDF email]
   gemini[Task9 Gemini drafts]
   zoom[Task10 Zoom file]
-  speech[Task11 ElevenLabs prompt]
+  speech[Task11 ElevenLabs realtime STT]
   tiger[Task12 Tiger row]
   ping --> template --> session
   session --> confirm --> choice --> gate
@@ -87,8 +88,8 @@ flowchart TD
 
 ### Phase 1: Server the UI can reach
 
-- [ ] Task 1: Ping, CORS, bearer
-- [ ] Task 2: Canonical adult-intake template
+- [x] Task 1: Ping, CORS, bearer
+- [x] Task 2: Canonical adult-intake template
 - [ ] Task 3: Synthetic session, transcript, grounded events
 
 ### Checkpoint: After Tasks 1–3
@@ -125,7 +126,7 @@ flowchart TD
 
 - [ ] Task 9: Gemini drafts
 - [ ] Task 10: Zoom transcript file
-- [ ] Task 11: ElevenLabs prompt audio
+- [ ] Task 11: ElevenLabs realtime speech-to-text
 - [ ] Task 12: Tiger stores the sent packet
 
 ### Checkpoint: Demo
