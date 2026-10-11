@@ -29,7 +29,79 @@ function CallVideo({ video, audio, className }) {
   return <video ref={ref} autoPlay playsInline muted={!audio} className={className} />;
 }
 
-// Live mode joins the session's Daily room. Speech-to-text follows the patient, not the host.
+// Patient speech is captioned for the clinician. The host mic is transcribed only to detect
+// which intake question was asked, and those lines stay off the caption.
+const STT_RETRY_MS = 1000;
+
+/**
+ * One speech-to-text socket while `active`. A close mints a new token and keeps the audio graph.
+ * @param {{
+ *   active: boolean,
+ *   track?: MediaStreamTrack,
+ *   onPartial?: (text: string) => void,
+ *   onCommitted?: (text: string) => void,
+ *   onListening?: (on: boolean) => void,
+ *   onError?: (err: unknown) => void,
+ * }} opts
+ */
+function useLiveStt({ active, track, onPartial, onCommitted, onListening, onError }) {
+  const cb = useRef({ onPartial, onCommitted, onListening, onError });
+  cb.current = { onPartial, onCommitted, onListening, onError };
+  useEffect(() => {
+    if (!active) {
+      cb.current.onListening?.(false);
+      cb.current.onPartial?.("");
+      return undefined;
+    }
+    let cancelled = false;
+    /** @type {{ stop: () => void } | null} */
+    let handle = null;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let retry;
+    /** @type {(value?: unknown) => void} */
+    let finishRetry = () => {};
+
+    const start = async () => {
+      while (!cancelled) {
+        try {
+          const { wsUrl } = await workspaceApi.getSttToken();
+          if (cancelled) return;
+          handle = await startRealtimeStt({
+            wsUrl,
+            ...(track ? { track } : {}),
+            nextWsUrl: async () => (await workspaceApi.getSttToken()).wsUrl,
+            onPartial: (text) => cb.current.onPartial?.(text),
+            onCommitted: (text) => cb.current.onCommitted?.(text),
+            onError: (err) => cb.current.onError?.(err),
+          });
+          if (cancelled) {
+            handle.stop();
+            return;
+          }
+          cb.current.onListening?.(true);
+          return;
+        } catch (err) {
+          if (cancelled) return;
+          handle = null;
+          cb.current.onListening?.(false);
+          cb.current.onError?.(err);
+          await new Promise((resolve) => {
+            finishRetry = resolve;
+            retry = setTimeout(resolve, STT_RETRY_MS);
+          });
+        }
+      }
+    };
+    void start();
+    return () => {
+      cancelled = true;
+      clearTimeout(retry);
+      finishRetry();
+      handle?.stop();
+      cb.current.onListening?.(false);
+    };
+  }, [active, track]);
+}
 /**
  * @param {{
  *   session: { connection: "connected" | "patient_left", paused: boolean, elapsed: number },
@@ -67,65 +139,43 @@ export default function VideoPane({
   const [waiting, setWaiting] = useState(/** @type {Array<{ id: string, name: string }>} */ ([]));
   const [copied, setCopied] = useState(false);
   const patient = people.find((p) => !p.local);
+  const localPerson = people.find((p) => p.local);
   const patientAudio = patient?.tracks.audio.state === "playable" ? patient.tracks.audio.persistentTrack : undefined;
+  const hostAudio = localPerson?.tracks.audio.state === "playable" ? localPerson.tracks.audio.persistentTrack : undefined;
   const startedAtRef = useRef(sessionInfo?.startedAt || Date.now());
   const leftRef = useRef(onSimulateDisconnect);
+  const transcriptRef = useRef(onCommittedTranscript);
   leftRef.current = onSimulateDisconnect;
+  transcriptRef.current = onCommittedTranscript;
+  const commitAt = () => Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000));
+
+  useLiveStt({
+    active: liveMode && live && !session.paused && Boolean(patientAudio),
+    track: patientAudio,
+    onPartial: setPartial,
+    onCommitted: (text) => {
+      setPartial("");
+      setPatientLines((lines) => [...lines, text].slice(-8));
+      transcriptRef.current?.({ t: commitAt(), speaker: "Patient", text });
+    },
+    onListening: (on) => {
+      setListening(on);
+      if (on) setSttError("");
+    },
+    onError: (err) => setSttError(err instanceof Error && err.message ? err.message : "Could not transcribe the patient"),
+  });
+  // Host mic selects the question. It is not the patient and does not enter the caption.
+  useLiveStt({
+    active: liveMode && live && !session.paused && mic && Boolean(hostAudio || callError),
+    track: hostAudio,
+    onCommitted: (text) => {
+      transcriptRef.current?.({ t: commitAt(), speaker: "Clinician", text });
+    },
+  });
 
   useEffect(() => {
     startedAtRef.current = sessionInfo?.startedAt || Date.now();
   }, [sessionInfo?.startedAt]);
-
-  // Patient audio only. The host microphone stays on the call and is not transcribed.
-  useEffect(() => {
-    if (!liveMode || !live || session.paused || !patientAudio) {
-      setListening(false);
-      setPartial("");
-      return undefined;
-    }
-    let cancelled = false;
-    /** @type {{ stop: () => void } | null} */
-    let handle = null;
-
-    (async () => {
-      setSttError("");
-      try {
-        const { wsUrl } = await workspaceApi.getSttToken();
-        if (cancelled) return;
-        handle = await startRealtimeStt({
-          wsUrl,
-          track: patientAudio,
-          onPartial: (text) => { if (!cancelled) setPartial(text); },
-          onCommitted: (text) => {
-            if (cancelled) return;
-            setPartial("");
-            setPatientLines((lines) => [...lines, text].slice(-8));
-            const t = Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000));
-            onCommittedTranscript?.({ t, speaker: "Patient", text });
-          },
-          onError: (err) => { if (!cancelled) setSttError(err.message); },
-          onClose: () => { if (!cancelled) setListening(false); },
-        });
-        if (cancelled) {
-          handle.stop();
-          return;
-        }
-        setListening(true);
-      } catch (err) {
-        if (!cancelled) {
-          setSttError(isErrorShape(err) && err.message ? err.message : "Could not transcribe the patient");
-          setListening(false);
-        }
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      handle?.stop();
-      setListening(false);
-      setPartial("");
-    };
-  }, [liveMode, live, session.paused, patientAudio, onCommittedTranscript]);
 
   // Any failure here (e.g. no DAILY_API_KEY) leaves mic-only live mode exactly as it was.
   useEffect(() => {
@@ -221,7 +271,7 @@ export default function VideoPane({
       <div className="relative flex-1 overflow-hidden">
         {patient && <CallVideo video={patientVideo} audio={patient.tracks.audio.persistentTrack} className="absolute inset-0 h-full w-full object-cover" />}
         {!patientVideo && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#2f4a43] to-[#1d2b27]">
+          <div className="absolute inset-0 flex items-center justify-center bg-[#1C3144]">
             <div className="text-center">
               <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/10"><UserRound className="h-12 w-12 text-white/70" /></div>
               <p className="mt-3 text-sm font-medium">{patientLabel}</p>

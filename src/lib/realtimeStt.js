@@ -45,12 +45,52 @@ function pcm16ToBase64(pcm) {
 }
 
 /**
- * @param {{ wsUrl: string, track?: MediaStreamTrack, onPartial?: (text: string) => void, onCommitted?: (text: string) => void, onError?: (err: Error) => void, onClose?: () => void }} opts
+ * @param {string} url
+ * @returns {Promise<WebSocket>}
+ */
+function openSocket(url) {
+  const ws = new WebSocket(url);
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => fail(new Error("Speech-to-text WebSocket timed out")), 10000);
+    /** @param {unknown} err */
+    const fail = (err) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
+      reject(err instanceof Error ? err : new Error(String(err)));
+    };
+    ws.onopen = () => {
+      if (settled) {
+        ws.close();
+        return;
+      }
+      settled = true;
+      clearTimeout(timer);
+      resolve(ws);
+    };
+    ws.onerror = () => fail(new Error("Speech-to-text WebSocket failed to connect"));
+    ws.onclose = () => fail(new Error("Speech-to-text WebSocket closed"));
+  });
+}
+
+/**
+ * @param {{
+ *   wsUrl: string,
+ *   track?: MediaStreamTrack,
+ *   nextWsUrl?: () => Promise<string>,
+ *   onPartial?: (text: string) => void,
+ *   onCommitted?: (text: string) => void,
+ *   onError?: (err: Error) => void,
+ *   onClose?: () => void,
+ * }} opts
  * @returns {Promise<{ stop: () => void }>}
  */
 export async function startRealtimeStt({
   wsUrl,
   track,
+  nextWsUrl,
   onPartial,
   onCommitted,
   onError,
@@ -71,34 +111,39 @@ export async function startRealtimeStt({
   const silent = ctx.createGain();
   silent.gain.value = 0;
 
-  const ws = new WebSocket(wsUrl);
   let closed = false;
+  let epoch = 0;
+  /** @type {WebSocket | null} */
+  let socket = null;
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let retryTimer = undefined;
+  /** @type {(value?: unknown) => void} */
+  let finishRetry = () => {};
+
+  const resumeCtx = async () => {
+    if (ctx.state === "suspended") await ctx.resume();
+  };
+  ctx.onstatechange = () => {
+    if (!closed && ctx.state === "suspended") void resumeCtx();
+  };
 
   const stop = () => {
     if (closed) return;
     closed = true;
+    ctx.onstatechange = null;
+    clearTimeout(retryTimer);
+    finishRetry();
     try { processor.disconnect(); } catch { /* already */ }
     try { source.disconnect(); } catch { /* already */ }
     try { silent.disconnect(); } catch { /* already */ }
     if (!borrowed) stream.getTracks().forEach((t) => t.stop());
     void ctx.close();
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
+    const ws = socket;
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) ws.close();
   };
 
-  /** @type {Promise<void>} */
-  const opened = new Promise((resolve, reject) => {
-    /** @param {unknown} err */
-    const fail = (err) => {
-      stop();
-      reject(err instanceof Error ? err : new Error(String(err)));
-    };
-    ws.onopen = () => resolve();
-    ws.onerror = () => fail(new Error("Speech-to-text WebSocket failed to connect"));
-    setTimeout(() => fail(new Error("Speech-to-text WebSocket timed out")), 10000);
-  });
-  await opened;
-
-  ws.onmessage = (ev) => {
+  /** @param {MessageEvent} ev */
+  const onMessage = (ev) => {
     let msg;
     try { msg = JSON.parse(ev.data); } catch { return; }
     const type = msg.message_type || msg.type;
@@ -111,16 +156,58 @@ export async function startRealtimeStt({
       onError?.(new Error(msg.error || msg.message || "Speech-to-text error"));
     }
   };
-  ws.onclose = () => {
-    if (!closed) stop();
-    onClose?.();
+
+  /** @param {WebSocket} ws */
+  const bind = (ws) => {
+    const mine = ++epoch;
+    socket = ws;
+    ws.onmessage = onMessage;
+    ws.onerror = () => {
+      if (mine === epoch) onError?.(new Error("Speech-to-text connection error"));
+    };
+    ws.onclose = () => {
+      if (!closed && mine === epoch) void reopen();
+    };
+    if (ws.readyState === WebSocket.CLOSED) void reopen();
   };
-  ws.onerror = () => onError?.(new Error("Speech-to-text connection error"));
+
+  // The socket dies after silence. The audio graph stays so the next token still hears quiet frames.
+  const reopen = async () => {
+    if (closed) return;
+    epoch += 1;
+    if (typeof nextWsUrl !== "function") {
+      stop();
+      onClose?.();
+      return;
+    }
+    try {
+      await resumeCtx();
+      if (closed) return;
+      const url = await nextWsUrl();
+      if (closed) return;
+      const ws = await openSocket(url);
+      if (closed) {
+        ws.close();
+        return;
+      }
+      bind(ws);
+    } catch (err) {
+      if (closed) return;
+      onError?.(err instanceof Error ? err : new Error(String(err)));
+      // shortcut: pause only after a failed mint so a dead socket cannot spin.
+      await new Promise((resolve) => {
+        finishRetry = resolve;
+        retryTimer = setTimeout(resolve, 400);
+      });
+      if (!closed) void reopen();
+    }
+  };
 
   processor.onaudioprocess = (e) => {
-    if (ws.readyState !== WebSocket.OPEN) return;
+    const current = socket;
+    if (!current || current.readyState !== WebSocket.OPEN) return;
     const input = e.inputBuffer.getChannelData(0);
-    ws.send(JSON.stringify({
+    current.send(JSON.stringify({
       message_type: "input_audio_chunk",
       audio_base_64: pcm16ToBase64(resampleToPcm16(input, ctx.sampleRate)),
       commit: false,
@@ -131,6 +218,19 @@ export async function startRealtimeStt({
   source.connect(processor);
   processor.connect(silent);
   silent.connect(ctx.destination);
+
+  try {
+    await resumeCtx();
+    const ws = await openSocket(wsUrl);
+    if (closed) {
+      ws.close();
+      return { stop };
+    }
+    bind(ws);
+  } catch (err) {
+    stop();
+    throw err;
+  }
 
   return { stop };
 }

@@ -3,6 +3,7 @@ import { workspaceApi } from "@/api";
 import { allQuestions } from "@/api/templates/adultIntake";
 import { getMode } from "@/api/config";
 import { applyFinalPass, applyLiveDrafts, planFinalPass } from "./applyLiveDrafts";
+import { applyAskedDraft, askedQuestionId } from "@/lib/matchIntakeQuestion";
 
 // Drives one intake session. In demo mode a synthetic transcript plays back and mock backend
 // events arrive over time. The frontend only DISPLAYS backend answers; it never invents them.
@@ -43,6 +44,7 @@ export default function useIntakeSession(session) {
   const reminderFired = useRef(false);
   const appliedSeqRef = useRef(0);
   const appliedFinalLinesRef = useRef(/** @type {number | null} */ (null));
+  const askedRef = useRef(/** @type {string | null} */ (null));
   const answersRef = useRef(answers);
   const transcriptRef = useRef(transcript);
   answersRef.current = answers;
@@ -51,6 +53,7 @@ export default function useIntakeSession(session) {
   useEffect(() => {
     appliedSeqRef.current = 0;
     appliedFinalLinesRef.current = null;
+    askedRef.current = null;
     if (!session) return;
     workspaceApi.getEvents({ sessionId: session.id }).then(setEvents);
     workspaceApi.getTranscript({ sessionId: session.id }).then(setTranscript);
@@ -137,16 +140,25 @@ export default function useIntakeSession(session) {
   const appendTranscriptLine = useCallback(/** @param {TranscriptLine} line */ async (line) => {
     if (!session) return;
     setTranscript((rows) => [...rows, line]);
+    let fillId = /** @type {string | null} */ (null);
+    if (line.speaker === "Clinician") {
+      const id = askedQuestionId(line.text, allQuestions);
+      if (id) askedRef.current = id;
+    } else if (line.speaker === "Patient") {
+      fillId = askedRef.current;
+      askedRef.current = null;
+    }
     try {
       const response = await workspaceApi.appendTranscriptLine({ sessionId: session.id, ...line });
       // Compared at apply time so an older response cannot land after a newer one.
+      // The spoken answer lands after that pass, so it is what stays on the asked field.
       setAnswers((current) => {
         const applied = applyLiveDrafts(current, response, appliedSeqRef.current);
         appliedSeqRef.current = applied.lastSeq;
-        return applied.answers;
+        return applyAskedDraft(applied.answers, fillId, line.text);
       });
     } catch {
-      // Live STT still shows in the UI if the persist route is unavailable.
+      if (fillId) setAnswers((current) => applyAskedDraft(current, fillId, line.text));
     }
   }, [session?.id]);
 
