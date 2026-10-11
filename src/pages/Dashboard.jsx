@@ -1,6 +1,5 @@
 import React from "react";
 import { useAuth } from "@/lib/AuthContext";
-import { ShieldAlert } from "lucide-react";
 import StartSessionCard from "@/components/dashboard/StartSessionCard";
 import TemplatePicker from "@/components/dashboard/TemplatePicker";
 
@@ -22,11 +21,6 @@ export default function Dashboard() {
         </div>
       </header>
 
-      <div role="note" className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-        <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-        <p><strong>Development environment.</strong> Use synthetic data only. This is not a validated clinical or HIPAA-compliant deployment.</p>
-      </div>
-
       <section aria-labelledby="session-actions-heading" className="space-y-4">
         <div className="flex items-baseline justify-between gap-3">
           <h2 id="session-actions-heading" className="text-xl font-semibold tracking-tight">Your next step</h2>
@@ -35,7 +29,7 @@ export default function Dashboard() {
         <StartSessionCard />
       </section>
 
-      <section className="max-w-4xl" aria-label="Intake questionnaires">
+      <section aria-label="Intake questionnaires">
         <div className="space-y-3">
           <div>
             <h2 className="text-xl font-semibold tracking-tight">Intake questionnaires</h2>

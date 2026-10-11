@@ -1,5 +1,5 @@
 import React from "react";
-import { X, ArrowRight, Volume2, BellOff, MessageCircleQuestion, CheckCircle2 } from "lucide-react";
+import { X, ArrowRight, BellOff, MessageCircleQuestion, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Compact, discreet cues along the top-right of the document panel. Max 2 shown at once.
@@ -10,10 +10,9 @@ import { Button } from "@/components/ui/button";
  *   onReview: (fieldId: string) => void,
  *   onDismiss: (key: string) => void,
  *   onSnooze: (fieldId: string) => void,
- *   onPlay: (fieldId: string) => void | Promise<void>,
  * }} props
  */
-export default function NotificationStack({ notifications, onReview, onDismiss, onSnooze, onPlay }) {
+export default function NotificationStack({ notifications, onReview, onDismiss, onSnooze }) {
   const visible = notifications.slice(-2);
   if (!visible.length) return null;
   return (
@@ -48,7 +47,6 @@ export default function NotificationStack({ notifications, onReview, onDismiss, 
             ) : (
               <>
                 <Button size="sm" className="h-7 text-xs" onClick={() => { onReview(n.fieldId); onDismiss(n.key); }}>Ask This Question</Button>
-                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onPlay(n.fieldId)}><Volume2 className="mr-1 h-3 w-3" />Play</Button>
                 <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { onSnooze(n.fieldId); onDismiss(n.key); }}><BellOff className="mr-1 h-3 w-3" />Later</Button>
               </>
             )}

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp, ShieldAlert, Volume2 } from "lucide-react";
+import { ChevronDown, ChevronUp, ShieldAlert } from "lucide-react";
 
 // Compact queue of required items without a draft. Safety items sort first.
 // "Later" only hides the visual highlight; it never marks a question complete.
@@ -9,10 +9,9 @@ import { ChevronDown, ChevronUp, ShieldAlert, Volume2 } from "lucide-react";
  *   outstanding: IntakeQuestionRef[],
  *   snoozed: Record<string, boolean>,
  *   onJump: (id: string) => void,
- *   onPlay: (id: string) => void | Promise<void>,
  * }} props
  */
-export default function OutstandingQueue({ outstanding, snoozed, onJump, onPlay }) {
+export default function OutstandingQueue({ outstanding, snoozed, onJump }) {
   const [open, setOpen] = useState(false);
   const safety = outstanding.filter((q) => q.safety).length;
   return (
@@ -32,7 +31,6 @@ export default function OutstandingQueue({ outstanding, snoozed, onJump, onPlay 
                 {q.safety && <ShieldAlert className="mr-1 inline h-3 w-3 text-red-600" />}
                 {q.label}{snoozed[q.id] ? " (snoozed)" : ""}
               </button>
-              <button onClick={() => onPlay(q.id)} aria-label="Play question" className="text-muted-foreground hover:text-primary"><Volume2 className="h-3.5 w-3.5" /></button>
             </li>
           ))}
         </ul>

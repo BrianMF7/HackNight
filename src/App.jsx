@@ -14,6 +14,7 @@ import ProtectedRoute from '@/components/ProtectedRoute';
 import AppLayout from '@/components/clinic/AppLayout';
 import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
+import Status from './pages/Status';
 import Workspace from './pages/Workspace';
 import { Navigate } from 'react-router-dom';
 // Add page imports here
@@ -52,6 +53,7 @@ const AuthenticatedApp = () => {
       <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
         <Route element={<AppLayout />}>
           <Route path="/app" element={<Dashboard />} />
+          <Route path="/status" element={<Status />} />
         </Route>
         <Route path="/app/workspace" element={<Workspace />} />
       </Route>

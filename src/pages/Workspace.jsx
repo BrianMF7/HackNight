@@ -42,11 +42,15 @@ export default function Workspace() {
     workspaceApi
       .createSession({
         templateId: "adult-intake-v1",
-        therapistName: "Dr. Rowan Ellis (synthetic)",
+        therapistName: "Dr. Rowan Ellis",
         therapistEmail: "therapist@example.com",
         ...(getMode() === "live" ? { live: true } : {}),
       })
-      .then(setInfo)
+      .then((session) => setInfo({
+        ...session,
+        patientLabel: session.patientLabel.replaceAll(" (synthetic)", ""),
+        therapist: { ...session.therapist, name: session.therapist.name.replaceAll(" (synthetic)", "") },
+      }))
       .catch((/** @type {unknown} */ reason) => {
         setError(isErrorShape(reason) ? reason : { message: "Could not start the session." });
       });
@@ -60,17 +64,6 @@ export default function Workspace() {
     document.getElementById(`q-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
     setTimeout(() => setHighlightId((h) => (h === id ? null : h)), 3500);
   }, []);
-
-  /** @param {string} fieldId */
-  const play = async (fieldId) => {
-    if (!info) return;
-    try {
-      await workspaceApi.playQuestion({ sessionId: info.id, fieldId });
-      toast({ title: "Play Question", description: getMode() === "live" ? "Playing the question prompt." : "Demo mode: audio comes from the backend's ElevenLabs integration once connected." });
-    } catch (e) {
-      toast({ title: "Could not play question", description: isErrorShape(e) ? e.message : undefined, variant: "destructive" });
-    }
-  };
 
   const openReview = () => {
     setReviewOpen(true);
@@ -98,16 +91,15 @@ export default function Workspace() {
   const docPanel = (
     <div className="relative flex h-full min-h-0 flex-col bg-muted/40">
       <DocumentHeader session={session} focusMode={focusMode} onToggleFocus={() => setFocusMode((f) => !f)} onPreview={openReview} />
-      <OutstandingQueue outstanding={session.outstanding} snoozed={session.snoozed} onJump={jumpTo} onPlay={play} />
+      <OutstandingQueue outstanding={session.outstanding} snoozed={session.snoozed} onJump={jumpTo} />
       <NotificationStack
         notifications={session.notifications}
         onReview={jumpTo}
         onDismiss={session.dismissNotification}
         onSnooze={session.snooze}
-        onPlay={play}
       />
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-        <ClinicalDocument session={session} highlightId={highlightId} onPlay={play} />
+        <ClinicalDocument session={session} highlightId={highlightId} />
       </div>
     </div>
   );
@@ -119,7 +111,7 @@ export default function Workspace() {
         <p className="text-sm font-medium">{info.patientLabel} · Adult Intake</p>
         <span className="w-24 text-right text-xs text-muted-foreground">{sessionStatus === "In progress" ? "" : "Draft"}</span>
       </div>
-      <SessionTimerBar session={session} plannedMinutes={info.plannedMinutes} mode={getMode()} />
+      <SessionTimerBar session={session} plannedMinutes={info.plannedMinutes} />
 
       <div className="min-h-0 flex-1">
         {focusMode ? (

@@ -31,7 +31,6 @@ const uid = () => Math.random().toString(36).slice(2, 10);
  * @typedef {import("./liveWorkspace.js").DraftsInput} DraftsInput
  * @typedef {import("./liveWorkspace.js").ActionInput} ActionInput
  * @typedef {import("./liveWorkspace.js").HandoffInput} HandoffInput
- * @typedef {import("./liveWorkspace.js").PlayInput} PlayInput
  */
 
 /** @returns {WorkspaceStore} */
@@ -74,8 +73,6 @@ export const mockWorkspace = {
     save(db);
     return { ...s, invitationLink: `${window.location.origin}/join/${s.id}` };
   },
-
-  async playQuestion(/** @type {PlayInput} */ _ref) { await delay(200); return { demo: true, audioUrl: null }; },
 
   // Realtime STT needs live mode + the Node server minting a single-use ElevenLabs token.
   /** @returns {Promise<{ wsUrl: string }>} */

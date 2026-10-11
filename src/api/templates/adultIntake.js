@@ -27,7 +27,7 @@
 export const adultIntake = {
   id: "adult-intake-v1",
   title: "Intake Questionnaire for New Patients (Adult)",
-  version: "v1 (demo structure)",
+  version: "v1",
   pages: [
     {
       page: 1,

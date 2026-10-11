@@ -32,7 +32,6 @@ const WORKSPACE_METHODS = /** @type {const} */ ([
   "discardDraft",
   "requestHandoff",
   "startCall",
-  "playQuestion",
 ]);
 
 /** @typedef {typeof METHODS[number]} ApiMethod */
@@ -76,5 +75,4 @@ export const workspaceApi = {
   discardDraft: (payload) => workspace().discardDraft(payload),
   requestHandoff: (payload) => workspace().requestHandoff(payload),
   startCall: (payload) => workspace().startCall(payload),
-  playQuestion: (payload) => workspace().playQuestion(payload),
 };

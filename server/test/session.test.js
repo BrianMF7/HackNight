@@ -52,7 +52,7 @@ test("POST /api/sessions returns the workspace shape and events match the fixtur
     headers: authHeaders(),
     body: JSON.stringify({
       templateId: "adult-intake-v1",
-      therapistName: "Dr. Rowan Ellis (synthetic)",
+      therapistName: "Dr. Rowan Ellis",
       therapistEmail: "therapist@example.com",
     }),
   });
@@ -84,7 +84,7 @@ test("live create starts empty, and one append is the only transcript line", asy
       headers: authHeaders(),
       body: JSON.stringify({
         templateId: "adult-intake-v1",
-        therapistName: "Dr. Rowan Ellis (synthetic)",
+        therapistName: "Dr. Rowan Ellis",
         therapistEmail: "therapist@example.com",
         live: true,
       }),

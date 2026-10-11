@@ -15,7 +15,6 @@ import { getBackendUrl, getBackendToken } from "./config.js";
  * @typedef {{ sessionId: string, fieldId: string, action: string, answer: string }} ActionInput
  * @typedef {{ sessionId: string }} SessionRef
  * @typedef {{ sessionId: string, confirmedIds: string[], recipientEmail?: string, elapsedSeconds: number, plannedMinutes: number }} HandoffInput
- * @typedef {{ sessionId: string, fieldId?: string }} PlayInput
  * @typedef {{ message?: string, error?: string, code?: string }} ErrorBody
  */
 
@@ -35,7 +34,6 @@ export const workspaceEndpoints = {
   discardDraft: { method: "POST", path: "/api/sessions/:sessionId/discard" },
   requestHandoff: { method: "POST", path: "/api/sessions/:sessionId/handoff" },
   startCall: { method: "POST", path: "/api/sessions/:sessionId/call" },
-  playQuestion: null,
 };
 
 /**
@@ -89,5 +87,4 @@ export const liveWorkspace = {
   discardDraft: (/** @type {SessionRef} */ { sessionId }) => request("discardDraft", { params: { sessionId } }),
   requestHandoff: (/** @type {HandoffInput} */ payload) => request("requestHandoff", { params: { sessionId: payload.sessionId }, body: payload }),
   startCall: (/** @type {SessionRef} */ { sessionId }) => request("startCall", { params: { sessionId } }),
-  playQuestion: (/** @type {PlayInput} */ { sessionId, fieldId }) => request("playQuestion", { params: { sessionId }, body: { fieldId } }),
 };
