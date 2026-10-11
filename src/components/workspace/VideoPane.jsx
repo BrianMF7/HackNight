@@ -297,7 +297,7 @@ export default function VideoPane({
           </div>
         )}
 
-        <div className="absolute bottom-3 right-3 flex h-24 w-36 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-[#3a5a52] shadow-lg">
+        <div className="absolute bottom-3 right-3 flex h-24 w-36 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-[#5F7383] shadow-lg">
           {selfVideo ? <CallVideo video={selfVideo} className="h-full w-full -scale-x-100 object-cover" />
             : cam ? <div className="text-center"><User className="mx-auto h-7 w-7 text-white/70" /><p className="mt-1 text-[10px] text-white/70">You</p></div>
             : <VideoOff className="h-6 w-6 text-white/50" />}

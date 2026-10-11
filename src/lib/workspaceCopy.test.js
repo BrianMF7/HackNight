@@ -30,3 +30,10 @@ test("the start dialog and workspace do not call the session a demo", async () =
   assert.equal(form.includes("demo structure"), false);
   assert.equal(serverForm.includes("demo structure"), false);
 });
+
+test("the clinician self view uses the current slate", async () => {
+  const src = await readFile(new URL("../components/workspace/VideoPane.jsx", import.meta.url), "utf8");
+  const tile = src.slice(src.indexOf("bottom-3 right-3"), src.indexOf("bottom-3 right-3") + 240);
+  assert.equal(tile.includes("bg-[#5F7383]"), true);
+  assert.equal(tile.includes("#3a5a52"), false);
+});
