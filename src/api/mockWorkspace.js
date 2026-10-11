@@ -47,6 +47,8 @@ const load = () => {
 const save = (db) => localStorage.setItem(KEY, JSON.stringify(db));
 
 export const mockWorkspace = {
+  async diagnostic() { return { status: 'unavailable', hypotheses: [], review: null, message: 'Automatic diagnostic analysis requires the live backend and explicit PHI processing configuration.' }; },
+  async reviewDiagnostic() { throw new ApiError('Clinician diagnostic review requires the live backend.', { code: 'MOCK_MODE' }); },
   async getTemplates() {
     await delay(150);
     return [

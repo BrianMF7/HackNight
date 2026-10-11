@@ -181,7 +181,17 @@ export async function renderIntakePdf(record, { includeDrafts = false } = {}) {
   draw(`Clinician  ${record.therapist?.name ?? "Not assigned"}`, { size: 10 });
   draw(`Record     ${record.id ?? "Unknown"}`, { size: 9, color: MUTED, gapAfter: 10 });
 
-  for (const section of (includeDrafts ? exportSections(record, template) : confirmedSections(record, template))) {
+  draw("SECTION 1 - RISK ASSESSMENT", { strong: true, size: 12, gapAfter: 6 });
+  const safetyQuestions = template.pages.flatMap(p => p.sections.flatMap(s => s.questions)).filter(q => q.safety);
+  for (const question of safetyQuestions) {
+    const saved = record.answers?.[question.id];
+    draw(question.label, { strong: true, size: 9, gapAfter: 0 });
+    draw(saved?.status === "confirmed" ? saved.answer : "Not yet clinician-confirmed", { size: 9, gapAfter: 5 });
+  }
+  draw("Safety responses are not a risk classification. An independent clinician assessment is required.", { size: 8, color: MUTED, gapAfter: 8 });
+  rule();
+  draw("SECTION 2 - INTAKE QUESTIONNAIRE", { strong: true, size: 12, gapAfter: 6 });
+    for (const section of (includeDrafts ? exportSections(record, template) : confirmedSections(record, template))) {
     if (y < MARGIN + 48) newPage();
     draw(section.title.toUpperCase(), { strong: true, size: 9, gapAfter: 2, color: BAR });
     rule();
@@ -210,6 +220,25 @@ export async function renderIntakePdf(record, { includeDrafts = false } = {}) {
   draw(includeDrafts
     ? "Draft entries are taken from the patient transcript and are not confirmed."
     : "Unanswered items are omitted. Omission is not a negative finding.", { size: 8, color: MUTED, gapAfter: 2 });
-  draw("No diagnosis code has been assigned by this document.", { size: 8, color: MUTED });
+  const review = record.diagnostic?.review;
+  if (review) {
+    rule();
+    draw('SECTION 3 - DIAGNOSTIC ASSESSMENT', { strong: true, size: 12 });
+    if (review.decision === 'confirm') {
+      draw(`Clinician-confirmed diagnostic consideration: ${review.name}`, { strong: true });
+      draw('This preliminary consideration was selected by the clinician; reference retrieval does not establish DSM-5-TR criteria or an ICD code.', { size: 8, color: MUTED });
+    } else {
+      draw('Diagnosis deferred by clinician. Additional evaluation required.', { strong: true });
+    }
+    if (review.note) draw(`Clinician note: ${review.note}`, { size: 9 });
+  } else {
+    rule();
+    draw('SECTION 3 - DIAGNOSTIC ASSESSMENT', { strong: true, size: 12 });
+    draw('Diagnosis not established or clinician-confirmed in this document.', { size: 8, color: MUTED });
+  }
+  if (record.diagnostic?.reference?.status === 'retrieved') {
+    draw(`Reference consulted: DSM-5-TR (2022), PDF pages ${record.diagnostic.reference.sources.map(x => x.page).join(', ')}. Clinician verification required.`, {size:8,color:MUTED});
+  }
+  draw('No diagnosis code has been assigned by this document.', { size: 8, color: MUTED });
   return Buffer.from(await pdf.save());
 }

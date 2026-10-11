@@ -1,3 +1,4 @@
+import { scheduleDiagnostic } from "./diagnostic.js";
 import { randomUUID } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import path from "node:path";
@@ -190,6 +191,7 @@ async function appendTranscriptLine(rawId, line, fetchImpl) {
     return { status: 400, body: { message: "Transcript text is required", code: "BAD_REQUEST" } };
   }
   record.transcript.push(entry);
+  scheduleDiagnostic(record, fetchImpl);
   if (!record.live) return { status: 200, body: entry };
   const drafted = await enqueueLiveDraft(record, fetchImpl);
   for (const draft of drafted.drafts ?? []) {

@@ -38,3 +38,6 @@ dist-ssr
 
 # Local link to a Base44 app, written by `base44 link`
 base44/.app.jsonc
+
+# Privately prepared, potentially copyrighted clinical references
+.local-clinical/

@@ -27,6 +27,9 @@ export function handoffReasons(record, now) {
   if (questions.some((q) => q.safety && !confirmed(q))) {
     reasons.push({ code: 'SAFETY_UNRESOLVED', message: 'A required safety item is unresolved.' });
   }
+  if (process.env.DIAGNOSTIC_REVIEW_REQUIRED === '1' && !record.diagnostic?.review) {
+    reasons.push({ code: 'DIAGNOSTIC_REVIEW_PENDING', message: 'The clinician must confirm a diagnostic hypothesis or document a deferred diagnosis before handoff.' });
+  }
   if (typeof record.therapist?.email !== 'string' ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.therapist.email)) {
     reasons.push({ code: 'NO_RECIPIENT', message: 'No therapist recipient is assigned.' });
