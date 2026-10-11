@@ -119,7 +119,7 @@ export default function Workspace() {
         <p className="text-sm font-medium">{info.patientLabel} · Adult Intake</p>
         <span className="w-24 text-right text-xs text-muted-foreground">{sessionStatus === "In progress" ? "" : "Draft"}</span>
       </div>
-      <SessionTimerBar session={session} plannedMinutes={info.plannedMinutes} mode={getMode()} />
+      <SessionTimerBar session={session} plannedMinutes={info.plannedMinutes} />
 
       <div className="min-h-0 flex-1">
         {focusMode ? (

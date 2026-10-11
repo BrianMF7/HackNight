@@ -13,10 +13,9 @@ import { allQuestions } from "@/api/templates/adultIntake";
  *     questionState: (id: string) => { status: AnswerStatus },
  *   },
  *   plannedMinutes: number,
- *   mode: string,
  * }} props
  */
-export default function SessionTimerBar({ session, plannedMinutes, mode }) {
+export default function SessionTimerBar({ session, plannedMinutes }) {
   const total = plannedMinutes * 60;
   const remaining = total - session.elapsed;
   const required = allQuestions.filter((q) => q.required);
@@ -30,7 +29,6 @@ export default function SessionTimerBar({ session, plannedMinutes, mode }) {
       <span className="text-muted-foreground">Elapsed {formatClock(session.elapsed)} of {plannedMinutes}:00</span>
       <span className="flex items-center gap-1.5 text-muted-foreground"><ListChecks className="h-3.5 w-3.5" />{confirmed}/{required.length} required confirmed</span>
       <span className="flex items-center gap-1.5 text-muted-foreground"><HelpCircle className="h-3.5 w-3.5" />{session.outstanding.length} pending</span>
-      <span className="ml-auto rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground">{mode === "live" ? "Live backend" : "Demo · synthetic data"}</span>
     </div>
   );
 }
