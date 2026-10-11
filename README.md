@@ -1,62 +1,92 @@
-# Base44 Project
+# MindScribe
 
-Use this repository to run and edit the app locally, then publish changes back through Base44.
+More human care. Less paperwork.
 
-Any change pushed to the repo will also be reflected in the Base44 Builder.
+MindScribe is an AI-assisted mental health intake workspace. It turns a live conversation into a structured questionnaire the clinician still has to review. Speech becomes text, relevant answers are proposed from that text, and nothing is sent until a person confirms it.
 
-## Prerequisites
+**Try it:** [www.mindscribe.health](https://www.mindscribe.health)
 
-1. Clone the repository using the project's Git URL.
-2. Navigate to the project directory.
-3. Install dependencies: `npm install`.
-4. Install the Base44 CLI: `npm install -g base44@latest`.
-5. Install [Deno](https://docs.deno.com/runtime/getting_started/installation/) — the local Base44 backend runs on it.
+Built for Hack Knight Fall 2026 by Brian Martinez Flores, Joshua Peguero, Lauren Rodriguez, and Tomas Santos Yciano.
 
-Run `base44 --help` (or see the [CLI reference](https://docs.base44.com/developers/references/cli/commands/introduction)) for the full command surface.
+## The problem
 
-## Run Locally
+An intake asks a clinician to listen, take notes, and complete a structured form at the same time. Details get lost when attention splits between the person in the room and the paperwork that has to follow them out of it.
 
-Three commands, from the project root:
+## What it does
 
-```bash
-base44 login   # one-time per machine
-base44 link    # one-time per clone
-base44 dev     # local backend + frontend together
-```
+Transcribe, structure, confirm, hand off.
 
-Open the frontend URL that `base44 dev` prints (typically `http://localhost:5173`).
+1. **Transcribe.** ElevenLabs Scribe turns speech into reviewable lines. Daily hosts the video room. The patient opens a link, knocks, and the clinician admits them.
+2. **Structure.** Google Gemini proposes answers only where a quote from the transcript supports them. Silence is not stored as "no." Invented quotes are dropped.
+3. **Confirm.** The clinician edits or confirms each field. A draft is not a final answer. Safety questions cannot be waived.
+4. **Hand off.** The server, not the browser, checks a 45-minute minimum, required confirmations, unresolved safety items, and a real recipient. A refused send writes nothing. An allowed send builds a PDF with pdf-lib, emails it once with Nodemailer, and can store that packet in Tiger Data.
 
-Notes:
+Diagnostic suggestions, when shown, are hypotheses with evidence and gaps. They are not a final diagnosis, and no diagnosis code is written onto the form. MindScribe does not contact emergency services.
 
-- **Every fresh clone needs `base44 link`.** It writes `base44/.app.jsonc` (the app-id pointer), which is deliberately gitignored. Your app id is in the Builder URL (`app.base44.com/apps/<id>/...`); `base44 link --help` shows the non-interactive flags.
-- **`base44 dev` runs the frontend for you** (via `site.serveCommand` in this repo's `base44/config.jsonc`) — never run `npm run dev` yourself: alone it serves a UI with no backend behind it (`[base44] Proxy not enabled`, every `/api` call fails), and alongside `base44 dev` the second Vite silently takes the next port and you end up looking at the wrong one.
-- **The app must be published at least once for the UI to load under `base44 dev`.** The frontend boots by fetching app settings from the hosted app; before the first publish that fails and every page redirects to login. The local API works regardless.
-- Entities, functions, and auth run locally — entity data is **in-memory only**, wiped when `base44 dev` restarts. Everything else (Core integrations, OAuth login) is forwarded to your deployed app. Full breakdown: [Local development overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview).
+## What we will not claim
 
-## Frontend Only, Hosted Backend
+This is an evaluation demo. It is not a HIPAA-compliant clinical system, and it is not authorized for real patient records. A clinic would still need a business associate agreement, access control, audit logs, and a breach process this build does not have.
 
-To work on just the frontend against your app's live hosted backend:
+A non-synthetic transcript is refused before it reaches Gemini unless the server is explicitly switched on for that processing. API keys for ElevenLabs, Daily, and Gemini stay on the server. The browser only receives short-lived tokens.
 
-```bash
-base44 dev --remote
-```
+## Stack
 
-⚠️ In this mode writes go to your app's **production data** — plain `base44 dev` keeps everything local.
+| Piece | Choice |
+| --- | --- |
+| Clinician workspace | React, Vite, Base44 |
+| Clinical server | Node.js |
+| Video | Daily |
+| Speech to text | ElevenLabs Scribe |
+| Drafts | Google Gemini |
+| PDF and email | pdf-lib, Nodemailer |
+| Sent packets | Tiger Data / PostgreSQL, only after an authorized handoff |
+| Site | [www.mindscribe.health](https://www.mindscribe.health) on Vercel. The API is a long-running Node process on Render, because session state lives in memory and would not survive a serverless restart. |
 
-## Publish Your Changes
-
-After pushing your changes to git, open the Base44 dashboard and publish the app:
+## Run it locally
 
 ```bash
-base44 dashboard open
+npm install
+cp .env.example .env
+npm install -g base44@latest
+base44 login    # once per machine
+base44 link     # once per clone
+base44 dev      # frontend and Base44 together
 ```
 
-This repo syncs to Base44 through git, so publish from the dashboard rather than `base44 deploy` — a CLI deploy ships your local tree directly, bypassing the sync, and the deployed state silently diverges from the repo.
+In a second terminal, start the clinical server:
 
-## Docs & Support
+```bash
+npm run server
+```
 
-GitHub integration: [https://docs.base44.com/developers/app-code/local-development/github](https://docs.base44.com/developers/app-code/local-development/github)
+Open the URL `base44 dev` prints, usually `http://localhost:5173`. Fill `.env` from `.env.example`. Never commit `.env`.
 
-Local development: [https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview](https://docs.base44.com/developers/backend/overview/local-dev/local-development-overview)
+`base44 link` writes `base44/.app.jsonc`, which is gitignored, so every fresh clone needs it. Do not run `npm run dev` beside `base44 dev`. That starts a second Vite with no Base44 proxy. `base44 dev --remote` edits the frontend against the hosted Base44 app and writes production data.
 
-Support: [https://app.base44.com/support](https://app.base44.com/support)
+The clinical server reads `process.env`. `npm run server` loads `.env` for local work. On Render the start command is `node server/index.js`, and the host injects the variables.
+
+## Tests
+
+```bash
+node --test server/test/*.test.js src/lib/*.test.js
+npm run typecheck
+npm run lint
+npm run build
+```
+
+The handoff tests check that a forged clock or forged confirmation cannot send, and that a second send does not email twice.
+
+## Team
+
+- Brian Martinez Flores, B.S. Computer Science
+- Joshua Peguero, B.S. Computer Science
+- Lauren Rodriguez, M.S. AI & Data Science
+- Tomas Santos Yciano, M.S. AI & Data Science
+
+## What's next
+
+More questionnaires, stronger transcript-to-question mapping, and session storage that survives a server restart. Privacy, audit, and clinical validation come before any real deployment.
+
+## License
+
+Private hackathon project. All rights reserved by the team.
