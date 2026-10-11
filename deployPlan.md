@@ -38,7 +38,9 @@ Environment variables on the service:
 - `DATABASE_URL` — existing Tiger URL
 - `SMTP_URL` and `SMTP_FROM` — only if a live inbox should receive the PDF
 
-Check: `curl -H "Authorization: Bearer <BACKEND_TOKEN>" https://<service>.onrender.com/api/ping` returns `{ "ok": true }`.
+The service is already live at `https://hacknight-5os5.onrender.com`.
+
+Check: `curl -H "Authorization: Bearer <BACKEND_TOKEN>" https://hacknight-5os5.onrender.com/api/ping` returns `{ "ok": true }`.
 
 ## 2. Vercel: the page
 
@@ -46,14 +48,14 @@ Import the same GitHub repo. Framework preset Vite. Build command `npm run build
 
 Set these in the Vercel project before the build. Vite bakes them into the browser bundle, so a later env change needs a redeploy:
 
-- `VITE_BACKEND_URL` — the Render URL, `https://<service>.onrender.com`, no trailing slash
+- `VITE_BACKEND_URL` — `https://hacknight-5os5.onrender.com`, no trailing slash. A production build that omits this variable already uses that URL.
 - `VITE_BACKEND_TOKEN` — the same string as `BACKEND_TOKEN`
 
 Anyone who can open the site can read that token. That matches the connection dialog. It is not a patient login. Do not put ElevenLabs, Daily, Gemini, or the database URL in any `VITE_` variable.
 
 ## 3. Connect them
 
-Copy the Vercel production URL, including `https://` and with no path. On Render set:
+There is no frontend URL yet. After the page is deployed, copy that origin, including `https://` and with no path. On Render set:
 
 `CORS_ORIGIN=https://<project>.vercel.app`
 

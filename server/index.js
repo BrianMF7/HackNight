@@ -215,7 +215,8 @@ function json(res, status, body) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT) || 8787;
-  createServer().listen(port, () => {
-    process.stdout.write(`clinical server listening on ${port}\n`);
+  // Render's proxy cannot reach a localhost-only bind.
+  createServer().listen(port, "0.0.0.0", () => {
+    process.stdout.write(`clinical server listening on 0.0.0.0:${port}\n`);
   });
 }
