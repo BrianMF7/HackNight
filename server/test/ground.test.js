@@ -60,3 +60,39 @@ test("a spoken no stays no", () => {
   const draft = { fieldId: "SAF-001", status: "draft", answer: "no", evidence: '"No."' };
   assert.deepEqual(applyDrafts([draft], lines, ids), [draft]);
 });
+
+const SAD = "What brings me in today is that I feel sad.";
+
+test("the spoken line fills when evidence has no extra quotes", () => {
+  const ids = fieldIds();
+  const lines = [{ t: 8, speaker: "Patient", text: SAD }];
+  const draft = { fieldId: "AIQ-001", status: "draft", answer: "Feels sad.", evidence: SAD, t: 8 };
+  assert.deepEqual(applyDrafts([draft], lines, ids), [draft]);
+});
+
+test("a speaker label on the quote still fills when the words were spoken", () => {
+  const ids = fieldIds();
+  const lines = [{ t: 8, speaker: "Patient", text: SAD }];
+  const draft = {
+    fieldId: "AIQ-001",
+    status: "draft",
+    answer: "Feels sad.",
+    evidence: `Patient: ${SAD}`,
+    t: 8,
+  };
+  assert.deepEqual(applyDrafts([draft], lines, ids), [draft]);
+  const quoted = { ...draft, evidence: `"Patient: ${SAD}"` };
+  assert.deepEqual(applyDrafts([quoted], lines, ids), [quoted]);
+});
+
+test("an unquoted sentence that was never spoken fills nothing", () => {
+  const ids = fieldIds();
+  const lines = [{ t: 8, speaker: "Patient", text: SAD }];
+  const draft = {
+    fieldId: "AIQ-001",
+    status: "draft",
+    answer: "The patient reported chest pain.",
+    evidence: "The patient reported chest pain that was never spoken.",
+  };
+  assert.deepEqual(applyDrafts([draft], lines, ids), []);
+});

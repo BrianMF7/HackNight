@@ -10,11 +10,11 @@ const SPAN =
   'Low mood and lost interest were both described across a longer stretch, so depression is a possible focus to ask about.';
 
 const MOOD_RULE =
-  'Count this only when the person describes their own mood as low, flat, or hopeless.';
+  'Count this only when the speaker reports a sad, empty, or hopeless mood, or reports that someone else saw that mood, and it covers most of each day on most days.';
 const INTEREST_RULE =
-  'Count this only when the person describes stopping enjoyment or pulling away from things they usually do.';
+  'Count this only when the speaker reports a clear loss of interest or enjoyment in nearly everything they usually do, or reports that someone else saw that loss, and it covers most of each day on most days.';
 const SPAN_RULE =
-  'Count this only when the person says that low mood or lost interest has lasted beyond a short stretch.';
+  'Count this only when the speaker says the low mood or the lost interest has held through the same period of about two weeks, and that this is a change from how they usually feel.';
 
 test('dep-mood plus dep-interest returns depression with the pair reason', () => {
   assert.deepEqual(scoreFocus(['dep-mood', 'dep-interest']), {

@@ -48,6 +48,47 @@ test("a confirmed field stays confirmed when a later draft names it", () => {
   assert.equal(applied.lastSeq, 3);
 });
 
+test("a model status the form does not know is shown as a draft", () => {
+  const applied = applyLiveDrafts({}, {
+    seq: 1,
+    drafts: [{
+      fieldId: "AIQ-001",
+      status: "completed",
+      answer: "The patient feels sad.",
+      evidence: "What brings me in today is that I feel sad.",
+      t: 8,
+    }],
+  }, 0);
+
+  assert.equal(applied.answers["AIQ-001"].status, "draft");
+  assert.equal(applied.answers["AIQ-001"].answer, "The patient feels sad.");
+});
+
+test("a model status of confirmed does not confirm an open field", () => {
+  const applied = applyLiveDrafts({}, {
+    seq: 1,
+    drafts: [{ fieldId: "AIQ-001", status: "confirmed", answer: "Feels sad.", evidence: "sad", t: 8 }],
+  }, 0);
+
+  assert.equal(applied.answers["AIQ-001"].status, "draft");
+  assert.equal(applied.answers["AIQ-001"].answer, "Feels sad.");
+});
+
+test("a final pass keeps partial and clarify and shows any other model status as a draft", () => {
+  const applied = applyFinalPass({}, {
+    drafts: [
+      { fieldId: "AIQ-001", status: "partial", answer: "Sad.", evidence: "sad" },
+      { fieldId: "AIQ-002", status: "clarify", answer: "Unclear.", evidence: "unclear" },
+      { fieldId: "AIQ-003", status: "completed", answer: "Sleep.", evidence: "sleep" },
+    ],
+  });
+
+  assert.equal(applied["AIQ-001"].status, "partial");
+  assert.equal(applied["AIQ-002"].status, "clarify");
+  assert.equal(applied["AIQ-003"].status, "draft");
+  assert.equal(applied["AIQ-003"].answer, "Sleep.");
+});
+
 test("a demo append response leaves answers and the applied seq unchanged", () => {
   const answers = { "AIQ-001": { status: "draft", answer: "existing" } };
   const applied = applyLiveDrafts(answers, { ok: true, demo: true }, 0);

@@ -34,6 +34,15 @@
  * @typedef {{ call: false } | { call: true, body: { pass: "final", drafts: Array<FieldState & { fieldId: string }> } }} FinalPassPlan
  */
 
+const FORM_STATUS = new Set(["partial", "draft", "clarify"]);
+
+// The model uses statuses the form does not render. Only a clinician confirm is confirmed.
+/** @param {Draft} draft */
+function formDraft(draft) {
+  if (FORM_STATUS.has(draft.status)) return draft;
+  return { ...draft, status: "draft" };
+}
+
 // Writes commit-response drafts into the answer map. A lower seq is an older
 // Gemini pass and must not replace a newer one. Confirmed answers stay put.
 /**
@@ -53,7 +62,7 @@ export function applyLiveDrafts(answers, response, lastSeq) {
     if (!draft || typeof draft.fieldId !== "string") continue;
     if (next[draft.fieldId]?.status === "confirmed") continue;
     if (next === answers) next = { ...answers };
-    next[draft.fieldId] = draft;
+    next[draft.fieldId] = formDraft(draft);
   }
   return { answers: next, lastSeq: seq };
 }
@@ -90,7 +99,7 @@ export function applyFinalPass(answers, response) {
     if (!draft || typeof draft.fieldId !== "string") continue;
     if (next[draft.fieldId]?.status === "confirmed") continue;
     if (next === answers) next = { ...answers };
-    next[draft.fieldId] = draft;
+    next[draft.fieldId] = formDraft(draft);
   }
   return next;
 }

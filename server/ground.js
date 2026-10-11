@@ -8,6 +8,20 @@ function quotesIn(evidence) {
   return [...String(evidence ?? "").matchAll(/"([^"]*)"/g)].map((match) => match[1]);
 }
 
+// The model often returns the spoken line itself. Extra quote marks are not required.
+function evidenceQuotes(evidence) {
+  const quoted = quotesIn(evidence);
+  if (quoted.length > 0) return quoted;
+  const bare = String(evidence ?? "").trim();
+  return bare ? [bare] : [];
+}
+
+function partSpoken(part, corpus) {
+  if (corpus.includes(part)) return true;
+  const stripped = part.replace(/^(?:Patient|Clinician):\s*/, "");
+  return stripped.length > 0 && stripped !== part && corpus.includes(stripped);
+}
+
 export function quoteParts(quote) {
   return quote.split("...").map((part) => part.trim()).filter(Boolean);
 }
@@ -27,11 +41,11 @@ function quoteStatesDenial(quote, kind) {
 export function ground(draft, transcriptLines, fieldIds) {
   if (!fieldIds.has(draft.fieldId)) fail("UNKNOWN_FIELD", `Unknown field id ${draft.fieldId}`);
   const corpus = transcriptLines.map((line) => line.text).join("\n");
-  const quotes = quotesIn(draft.evidence);
+  const quotes = evidenceQuotes(draft.evidence);
   if (quotes.length === 0) fail("NO_QUOTE", "Draft has no transcript quote");
   for (const quote of quotes) {
     const parts = quoteParts(quote);
-    if (parts.length === 0 || parts.some((part) => !corpus.includes(part))) {
+    if (parts.length === 0 || parts.some((part) => !partSpoken(part, corpus))) {
       fail("INVENTED_QUOTE", "Invented quote");
     }
   }

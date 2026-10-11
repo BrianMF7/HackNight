@@ -286,6 +286,44 @@ test("a live append returns a grounded draft from one fetch with thinkingLevel l
   }
 });
 
+test("a live draft whose evidence is the spoken line, without extra quotes, is returned", async () => {
+  const line = { t: 8, speaker: "Patient", text: "What brings me in today is that I feel sad." };
+  const live = await listen(async () => ({
+    ok: true,
+    json: async () => ({
+      candidates: [{
+        content: {
+          parts: [{
+            text: JSON.stringify({
+              drafts: [{
+                fieldId: "AIQ-001",
+                status: "completed",
+                answer: "The patient feels sad.",
+                evidence: line.text,
+                t: 8,
+              }],
+            }),
+          }],
+        },
+      }],
+    }),
+  }));
+  try {
+    await withPhi(true, async () => {
+      const id = await createSession(live.base, true);
+      const res = await appendLine(live.base, id, line);
+      assert.equal(res.status, 200);
+      const body = await res.json();
+      assert.equal(body.drafts.length, 1);
+      assert.equal(body.drafts[0].fieldId, "AIQ-001");
+      assert.equal(body.drafts[0].answer, "The patient feels sad.");
+      assert.equal(body.drafts[0].evidence, line.text);
+    });
+  } finally {
+    await live.close();
+  }
+});
+
 test("a second live append waits, then one follow-up draft sees both lines", async () => {
   let calls = 0;
   let release;
