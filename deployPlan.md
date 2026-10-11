@@ -11,7 +11,7 @@ Hackathon goal: a public HTTPS site tonight that behaves like localhost. Two hos
 | Vite page | Vercel | Connect the GitHub repo, framework Vite, deploy. Fastest static host. |
 | Clinical server | Render Web Service, Starter (~$7) | One Node process that stays up. Free Render sleeps after 15 minutes and may restart at any time. |
 | Sent PDF rows | Tiger, already in use | `DATABASE_URL` only. Do not add a database. |
-| Domain | Skip tonight | Use the `*.vercel.app` and `*.onrender.com` URLs. |
+| Domain | `mindscribe.health` and `www.mindscribe.health` | Point both at the Vercel project. The API stays on Render. |
 
 Do not put the clinical server on Vercel. Sessions, transcripts, and focus answers live in a `Map` in `server/session.js`. Vercel functions start and stop, so the next request would not see the session. Railway and Fly.io can run the same Node process. They are a second account to learn. Use Railway only as the backup below.
 
@@ -57,13 +57,13 @@ Anyone who can open the site can read that token. That matches the connection di
 
 There is no frontend URL yet. After the page is deployed, copy that origin, including `https://` and with no path. On Render set:
 
-`CORS_ORIGIN=https://<project>.vercel.app`
+`CORS_ORIGIN=https://mindscribe.health,https://www.mindscribe.health`
 
-Redeploy the Render service so the new origin is loaded. The server allows only origins in that list. A preview URL (`*.vercel.app` on a branch deploy) is a different origin. Use the production URL for the demo.
+Redeploy the Render service so the new origin is loaded. `www` and the bare domain are different origins. The server allows both. A `*.vercel.app` preview is not the production site.
 
-Open the Vercel site. A production build defaults to live mode and `https://hacknight-5os5.onrender.com`. Save and test. Expect the ping to succeed.
+Open `https://mindscribe.health`. A production build defaults to live mode and `https://hacknight-5os5.onrender.com`. Save and test. Expect the ping to succeed.
 
-Sign-in calls `https://base44.app`, not the Vercel server. Base44 rejects the page with `Domain is not valid` until that Vercel hostname is allowed on the app. In the Base44 builder, add the production hostname (the `*.vercel.app` name, no path) to the app's domains, then redeploy Vercel. Do not set `VITE_BASE44_APP_BASE_URL` to `https://app.base44.com`. That is the builder, and it rejects the deployed site.
+Sign-in calls `https://base44.app`. In the Base44 builder, allow both `mindscribe.health` and `www.mindscribe.health`. Do not set `VITE_BASE44_APP_BASE_URL` to `https://app.base44.com`. That is the builder, and it rejects the deployed site.
 
 ## 4. Demo check
 
@@ -79,7 +79,7 @@ Use this only if Render cannot take a card before the demo. Keep the page on Ver
 New Railway service from the same repo.
 
 - Start command: `node server/index.js`
-- Same environment variables as the Render list, including `CORS_ORIGIN` set to the Vercel URL
+- Same environment variables as the Render list, including `CORS_ORIGIN` set to `https://mindscribe.health,https://www.mindscribe.health`
 
 Railway’s free allowance is a small monthly credit, not a sleeping free dyno. If the credit runs out, the process stops and the session is gone. The Vercel env `VITE_BACKEND_URL` must be the Railway URL, then redeploy Vercel.
 

@@ -13,13 +13,15 @@ import { getTemplate, listTemplates } from "./template.js";
 import { handleCall } from "./video.js";
 
 const DEFAULT_ORIGIN = "http://localhost:5173";
-const PRODUCTION_WEB_ORIGIN = "https://hack-night.vercel.app";
+const PRODUCTION_WEB_ORIGINS = ["https://mindscribe.health", "https://www.mindscribe.health"];
 
 /** @param {string | string[]} origin */
 export function parseCorsOrigins(origin) {
   const raw = Array.isArray(origin) ? origin.join(",") : origin || DEFAULT_ORIGIN;
   const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
-  if (!list.includes(PRODUCTION_WEB_ORIGIN)) list.push(PRODUCTION_WEB_ORIGIN);
+  for (const site of PRODUCTION_WEB_ORIGINS) {
+    if (!list.includes(site)) list.push(site);
+  }
   return list;
 }
 
