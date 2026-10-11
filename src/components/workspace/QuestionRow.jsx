@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Check, Pencil, Sparkles, ShieldAlert, Quote, Volume2 } from "lucide-react";
+import { Check, Pencil, Sparkles, ShieldAlert, Quote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { statusStyles } from "./statusStyles";
@@ -16,11 +16,10 @@ import { PHQ_CATEGORIES } from "@/api/templates/adultIntake";
  *   snoozed?: boolean,
  *   onConfirm: (fieldId: string, editedAnswer?: string) => void | Promise<void>,
  *   onSaveEdit: (fieldId: string, text: string) => void | Promise<void>,
- *   onPlay: (fieldId: string) => void | Promise<void>,
  *   readOnly?: boolean,
  * }} props
  */
-export default function QuestionRow({ q, state, highlighted, snoozed, onConfirm, onSaveEdit, onPlay, readOnly }) {
+export default function QuestionRow({ q, state, highlighted, snoozed, onConfirm, onSaveEdit, readOnly }) {
   const [editing, setEditing] = useState(false);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -92,10 +91,7 @@ export default function QuestionRow({ q, state, highlighted, snoozed, onConfirm,
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm italic text-muted-foreground">No supported answer yet. Left blank.</p>
             {!readOnly && (
-              <div className="flex gap-1.5">
-                <Button size="sm" variant="ghost" onClick={() => onPlay(q.id)} aria-label="Play question"><Volume2 className="mr-1 h-3.5 w-3.5" />Play Question</Button>
-                <Button size="sm" variant="outline" onClick={() => { setText(""); setEditing(true); }}><Pencil className="mr-1 h-3.5 w-3.5" />Enter answer</Button>
-              </div>
+              <Button size="sm" variant="outline" onClick={() => { setText(""); setEditing(true); }}><Pencil className="mr-1 h-3.5 w-3.5" />Enter answer</Button>
             )}
           </div>
         )}

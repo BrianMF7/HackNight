@@ -86,7 +86,6 @@ test('live adapter posts handoff on the session route', () => {
     method: 'POST',
     path: '/api/sessions/:sessionId/handoff',
   });
-  assert.equal(workspaceEndpoints.playQuestion, null);
 });
 
 test('review success names the recipient and limits the demo disclaimer to demo mode', async () => {

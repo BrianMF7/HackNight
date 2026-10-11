@@ -13,11 +13,10 @@ import QuestionRow from "./QuestionRow";
  *   },
  *   highlightId: string | null,
  *   readOnly?: boolean,
- *   onPlay: (fieldId: string) => void | Promise<void>,
  *   pageFilter?: number,
  * }} props
  */
-export default function ClinicalDocument({ session, highlightId, readOnly, onPlay, pageFilter }) {
+export default function ClinicalDocument({ session, highlightId, readOnly, pageFilter }) {
   const pages = pageFilter ? adultIntake.pages.filter((p) => p.page === pageFilter) : adultIntake.pages;
   return (
     <div className="space-y-6">
@@ -45,7 +44,6 @@ export default function ClinicalDocument({ session, highlightId, readOnly, onPla
                       snoozed={session.snoozed[q.id]}
                       onConfirm={session.confirm}
                       onSaveEdit={session.saveEdit}
-                      onPlay={onPlay}
                       readOnly={readOnly}
                     />
                   ))}
