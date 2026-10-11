@@ -64,6 +64,14 @@ test("preflight from the Vite origin allows the Authorization header", async () 
   assert.match(res.headers.get("access-control-allow-headers") || "", /authorization/i);
 });
 
+test("the deployed Vercel site is allowed even when CORS_ORIGIN is only localhost", async () => {
+  const res = await fetch(`${base}/api/ping`, {
+    headers: { Authorization: `Bearer ${TOKEN}`, Origin: "https://hack-night.vercel.app" },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get("access-control-allow-origin"), "https://hack-night.vercel.app");
+});
+
 test("a different origin is not echoed", async () => {
   const res = await fetch(`${base}/api/ping`, {
     headers: { Authorization: `Bearer ${TOKEN}`, Origin: "http://evil.example" },

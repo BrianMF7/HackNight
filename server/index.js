@@ -12,11 +12,14 @@ import { getTemplate, listTemplates } from "./template.js";
 import { handleCall } from "./video.js";
 
 const DEFAULT_ORIGIN = "http://localhost:5173";
+const PRODUCTION_WEB_ORIGIN = "https://hack-night.vercel.app";
 
 /** @param {string | string[]} origin */
 export function parseCorsOrigins(origin) {
   const raw = Array.isArray(origin) ? origin.join(",") : origin || DEFAULT_ORIGIN;
-  return raw.split(",").map((s) => s.trim()).filter(Boolean);
+  const list = raw.split(",").map((s) => s.trim()).filter(Boolean);
+  if (!list.includes(PRODUCTION_WEB_ORIGIN)) list.push(PRODUCTION_WEB_ORIGIN);
+  return list;
 }
 
 export function createServer({
