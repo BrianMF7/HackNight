@@ -192,6 +192,14 @@ async function appendTranscriptLine(rawId, line, fetchImpl) {
   record.transcript.push(entry);
   if (!record.live) return { status: 200, body: entry };
   const drafted = await enqueueLiveDraft(record, fetchImpl);
+  for (const draft of drafted.drafts ?? []) {
+    if (!draft?.fieldId || record.answers[draft.fieldId]?.status === "confirmed") continue;
+    record.answers[draft.fieldId] = {
+      status: "draft",
+      answer: draft.answer,
+      evidence: draft.evidence,
+    };
+  }
   return {
     status: 200,
     body: { ...entry, seq: drafted.seq, drafts: drafted.drafts, ...(drafted.code ? { code: drafted.code } : {}) },

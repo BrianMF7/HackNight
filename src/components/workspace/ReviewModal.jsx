@@ -3,6 +3,7 @@ import { Download, Send, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { workspaceApi } from "@/api";
+import { getBackendToken, getBackendUrl } from "@/api/config";
 import { isErrorShape } from "@/api/ApiError";
 import ReviewDocument from "./ReviewDocument";
 import ReviewSummary from "./ReviewSummary";
@@ -41,6 +42,28 @@ export default function ReviewModal({ open, onClose, session, sessionInfo, sessi
   const [blocked, setBlocked] = useState(/** @type {HandoffReason[] | null} */ (null));
   const [sent, setSent] = useState(/** @type {HandoffSent | null} */ (null));
   const [error, setError] = useState(/** @type {string | null} */ (null));
+
+  const downloadPdf = async () => {
+    setError(null);
+    try {
+      const res = await fetch(`${getBackendUrl()}/api/sessions/${sessionInfo.id}/pdf`, {
+        headers: { Authorization: `Bearer ${getBackendToken()}`, Accept: "application/pdf" },
+      });
+      if (!res.ok) {
+        setError("Could not export the PDF.");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "intake-summary.pdf";
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("Could not export the PDF.");
+    }
+  };
 
   const send = async () => {
     setBusy(true); setError(null);
@@ -95,7 +118,7 @@ export default function ReviewModal({ open, onClose, session, sessionInfo, sessi
           {!sent && (
             <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border bg-white px-6 py-3">
               <Button variant="outline" onClick={onClose}>Return to Review</Button>
-              <Button variant="outline" disabled title="Download is permitted only when backend policy allows it"><Download className="mr-2 h-4 w-4" />Download PDF</Button>
+              <Button variant="outline" onClick={downloadPdf}><Download className="mr-2 h-4 w-4" />Download PDF</Button>
               <Button onClick={() => setConfirming(true)}><Send className="mr-2 h-4 w-4" />Confirm and Send to Therapist</Button>
             </div>
           )}

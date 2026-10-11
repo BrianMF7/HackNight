@@ -15,10 +15,14 @@ import { getTemplate } from "./template.js";
 
 const PAGE_WIDTH = 612;
 const PAGE_HEIGHT = 792;
-const MARGIN = 48;
+const MARGIN = 54;
 const CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
 const FONT_SIZE = 10;
-const LINE_HEIGHT = 15;
+const LINE_HEIGHT = 14;
+const INK = rgb(0.12, 0.13, 0.15);
+const MUTED = rgb(0.38, 0.4, 0.43);
+const RULE = rgb(0.78, 0.79, 0.8);
+const BAR = rgb(0.17, 0.22, 0.27);
 
 function printable(value) {
   // The built-in Helvetica font uses WinAnsi. Replace unsupported characters
@@ -31,12 +35,20 @@ function printable(value) {
     .replace(/[^\x20-\x7E\n]/g, "?");
 }
 
-function verifiedEvidence(record, fieldId) {
+function quoteInTranscript(record, raw) {
   const transcriptTexts = (record.transcript ?? []).map((line) => String(line.text ?? ""));
+  const candidate = String(raw ?? "").trim().replace(/^"|"$/g, "");
+  if (!candidate || !transcriptTexts.some((text) => text.includes(candidate))) return null;
+  return candidate;
+}
+
+function verifiedEvidence(record, fieldId) {
+  const fromAnswer = quoteInTranscript(record, record.answers?.[fieldId]?.evidence);
+  if (fromAnswer) return fromAnswer;
   for (const event of record.events ?? []) {
-    if (event.fieldId !== fieldId || typeof event.evidence !== "string") continue;
-    const candidate = event.evidence.trim().replace(/^"|"$/g, "");
-    if (candidate && transcriptTexts.some((text) => text.includes(candidate))) return candidate;
+    if (event.fieldId !== fieldId) continue;
+    const fromEvent = quoteInTranscript(record, event.evidence);
+    if (fromEvent) return fromEvent;
   }
   return null;
 }
@@ -75,20 +87,24 @@ function wrap(text, font, fontSize, width) {
  * Select only the server-confirmed fields in canonical form order.
  * Exported separately to allow precise tests without inspecting compressed PDF streams.
  */
-export function confirmedSections(record, template) {
+function collectSections(record, template, includeDrafts) {
   const sections = [];
   for (const sourcePage of template.pages) {
     for (const section of sourcePage.sections) {
       const items = [];
       for (const question of section.questions) {
         const saved = record.answers?.[question.id];
-        if (saved?.status !== "confirmed") continue;
+        const drafted = includeDrafts && saved?.status === "draft" && String(saved.answer ?? "").trim();
+        if (saved?.status !== "confirmed" && !drafted) continue;
         items.push({
           id: question.id,
           label: question.label,
           answer: saved.answer,
           quote: verifiedEvidence(record, question.id),
-          confirmation: saved.action === "edit_confirm" ? "Edited and confirmed" : "Confirmed",
+          confirmation: saved.status === "confirmed"
+            ? (saved.action === "edit_confirm" ? "Edited and confirmed" : "Confirmed")
+            : "Draft",
+          draft: saved.status !== "confirmed",
         });
       }
       if (items.length) sections.push({ title: section.title, items });
@@ -97,8 +113,16 @@ export function confirmedSections(record, template) {
   return sections;
 }
 
+export function confirmedSections(record, template) {
+  return collectSections(record, template, false);
+}
+
+export function exportSections(record, template) {
+  return collectSections(record, template, true);
+}
+
 /** @returns {Promise<Buffer>} The completed PDF bytes, never written to disk. */
-export async function renderIntakePdf(record) {
+export async function renderIntakePdf(record, { includeDrafts = false } = {}) {
   if (!record || typeof record !== "object") throw new TypeError("Session record is required");
   const template = getTemplate(record.templateId);
   if (!template) throw new Error("Unknown intake template");
@@ -106,46 +130,68 @@ export async function renderIntakePdf(record) {
   const pdf = await PDFDocument.create();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
+  const italic = await pdf.embedFont(StandardFonts.HelveticaOblique);
   let page;
   let y;
+  let pageNo = 0;
+
+  function paintChrome() {
+    page.drawRectangle({ x: 0, y: PAGE_HEIGHT - 32, width: PAGE_WIDTH, height: 32, color: BAR });
+    page.drawText("ClinicoLink", { x: MARGIN, y: PAGE_HEIGHT - 20, size: 10, font: bold, color: rgb(1, 1, 1) });
+    page.drawText("Intake record", { x: PAGE_WIDTH - MARGIN - 68, y: PAGE_HEIGHT - 20, size: 9, font, color: rgb(0.82, 0.85, 0.88) });
+    page.drawText(String(pageNo), { x: PAGE_WIDTH - MARGIN, y: 28, size: 8, font, color: MUTED });
+  }
 
   function newPage() {
     page = pdf.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
-    y = PAGE_HEIGHT - MARGIN;
+    pageNo += 1;
+    paintChrome();
+    y = PAGE_HEIGHT - 56;
   }
 
-  function draw(text, { strong = false, size = FONT_SIZE, indent = 0, gapAfter = 4 } = {}) {
-    const typeface = strong ? bold : font;
+  function rule() {
+    if (y < MARGIN + 8) newPage();
+    page.drawLine({ start: { x: MARGIN, y }, end: { x: PAGE_WIDTH - MARGIN, y }, thickness: 0.6, color: RULE });
+    y -= 12;
+  }
+
+  function draw(text, { strong = false, oblique = false, size = FONT_SIZE, indent = 0, gapAfter = 2, color = INK } = {}) {
+    const typeface = oblique ? italic : strong ? bold : font;
     const width = CONTENT_WIDTH - indent;
     for (const line of wrap(text, typeface, size, width)) {
       if (y < MARGIN + LINE_HEIGHT) newPage();
-      if (line) {
-        page.drawText(line, { x: MARGIN + indent, y, size, font: typeface, color: rgb(0.1, 0.15, 0.22) });
-      }
+      if (line) page.drawText(line, { x: MARGIN + indent, y, size, font: typeface, color });
       y -= LINE_HEIGHT;
     }
     y -= gapAfter;
   }
 
   newPage();
-  draw("Clinical Intake - Clinician-Confirmed Summary", { strong: true, size: 15, gapAfter: 12 });
-  draw(`Template: ${template.title} (${template.version})`);
-  draw(`Session: ${record.id ?? "Unknown"}`);
-  draw(`Patient: ${record.patientLabel ?? "Unknown"}`);
-  draw(`Therapist: ${record.therapist?.name ?? "Not assigned"}`);
-  y -= 10;
+  draw(includeDrafts ? "Intake summary" : "Confirmed intake summary", { strong: true, size: 16, gapAfter: 8 });
+  draw(template.title, { size: 9, color: MUTED, gapAfter: 8 });
+  rule();
+  draw(`Patient    ${record.patientLabel ?? "Not recorded"}`, { size: 10 });
+  draw(`Clinician  ${record.therapist?.name ?? "Not assigned"}`, { size: 10 });
+  draw(`Record     ${record.id ?? "Unknown"}`, { size: 9, color: MUTED, gapAfter: 10 });
 
-  for (const section of confirmedSections(record, template)) {
-    draw(section.title, { strong: true, size: 12, gapAfter: 6 });
+  for (const section of (includeDrafts ? exportSections(record, template) : confirmedSections(record, template))) {
+    if (y < MARGIN + 48) newPage();
+    draw(section.title.toUpperCase(), { strong: true, size: 9, gapAfter: 2, color: BAR });
+    rule();
     for (const item of section.items) {
-      draw(`${item.id}: ${item.label}`, { strong: true, gapAfter: 1 });
-      draw(`Confirmed answer: ${item.answer}`, { indent: 10, gapAfter: 2 });
-      if (item.quote) draw(`Transcript quote: "${item.quote}"`, { indent: 10, gapAfter: 2 });
-      draw(`Clinician confirmation: ${item.confirmation}`, { indent: 10, gapAfter: 8 });
+      if (y < MARGIN + 46) newPage();
+      draw(item.label, { strong: true, size: 10, gapAfter: 1 });
+      draw(item.answer, { size: 10, gapAfter: 1 });
+      if (item.quote) draw(item.quote, { oblique: true, size: 9, color: MUTED, gapAfter: 1 });
+      draw(item.draft ? "Draft" : item.confirmation, { size: 8, color: MUTED, gapAfter: 8 });
     }
   }
 
-  draw("Only clinician-confirmed responses are shown. Unanswered items are not negative findings.", { gapAfter: 4 });
-  draw("No diagnosis code has been assigned by this document.");
+  if (y < MARGIN + 36) newPage();
+  rule();
+  draw(includeDrafts
+    ? "Draft entries are taken from the patient transcript and are not confirmed."
+    : "Unanswered items are omitted. Omission is not a negative finding.", { size: 8, color: MUTED, gapAfter: 2 });
+  draw("No diagnosis code has been assigned by this document.", { size: 8, color: MUTED });
   return Buffer.from(await pdf.save());
 }

@@ -6,7 +6,8 @@ import { createSql, pingDatabase } from "./db.js";
 import { handleDisconnect } from "./disconnect.js";
 import { handleFocus } from "./focus/routes.js";
 import { handleHandoff } from "./handoff.js";
-import { handleSession } from "./session.js";
+import { findSession, handleSession } from "./session.js";
+import { renderIntakePdf } from "./pdf.js";
 import { createScribeToken } from "./stt.js";
 import { getTemplate, listTemplates } from "./template.js";
 import { handleCall } from "./video.js";
@@ -107,6 +108,26 @@ export function createServer({
         json(res, 400, { message: "Invalid JSON", code: "BAD_REQUEST" });
         return;
       }
+    }
+
+    const pdfMatch = req.method === "GET" && /^\/api\/sessions\/([^/]+)\/pdf$/.exec(url.pathname);
+    if (pdfMatch) {
+      const record = findSession(pdfMatch[1]);
+      if (!record) {
+        json(res, 404, { message: "Not found", code: "NOT_FOUND" });
+        return;
+      }
+      try {
+        const bytes = await renderIntakePdf(record, { includeDrafts: true });
+        res.writeHead(200, {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": "attachment; filename=\"intake-summary.pdf\"",
+        });
+        res.end(bytes);
+      } catch {
+        json(res, 500, { message: "Could not export the PDF", code: "PDF_FAILED" });
+      }
+      return;
     }
 
     const now = Date.now();

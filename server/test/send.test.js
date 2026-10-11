@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { confirmedSections, renderIntakePdf } from "../pdf.js";
+import { confirmedSections, exportSections, renderIntakePdf } from "../pdf.js";
 import { createFakeMailer, createSmtpMailer, sendPacketOnce } from "../send.js";
 import { getTemplate } from "../template.js";
 
@@ -28,6 +28,18 @@ test("PDF is valid, displays confirmed answer and avoids drafts", async () => {
   const { PDFDocument } = await import("pdf-lib");
   const doc = await PDFDocument.load(bytes);
   assert.ok(doc.getPageCount() >= 1);
+});
+
+test("export includes a drafted client answer and the emailed PDF does not", () => {
+  const record = exampleRecord();
+  const template = getTemplate(record.templateId);
+  assert.equal(confirmedSections(record, template).flatMap((section) => section.items).length, 1);
+  const exported = exportSections(record, template).flatMap((section) => section.items);
+  assert.equal(exported.some((item) => item.id === "AIQ-002" && item.draft), true);
+  record.answers["AIQ-001"].evidence = '"Work has been stressful."';
+  record.events = [];
+  const quoted = exportSections(record, template).flatMap((section) => section.items).find((item) => item.id === "AIQ-001");
+  assert.equal(quoted.quote, "Work has been stressful.");
 });
 
 test("PDF source contains confirmed answers and grounded exact evidence only", () => {

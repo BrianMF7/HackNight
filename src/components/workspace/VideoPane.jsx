@@ -29,7 +29,7 @@ function CallVideo({ video, audio, className }) {
   return <video ref={ref} autoPlay playsInline muted={!audio} className={className} />;
 }
 
-// Live mode joins the session's Daily room. The clinician mic also streams to realtime speech-to-text.
+// Live mode joins the session's Daily room. Speech-to-text follows the patient, not the host.
 /**
  * @param {{
  *   session: { connection: "connected" | "patient_left", paused: boolean, elapsed: number },
@@ -57,6 +57,7 @@ export default function VideoPane({
   const [chat, setChat] = useState(false);
   const [msgs, setMsgs] = useState(/** @type {ChatLine[]} */ ([]));
   const [partial, setPartial] = useState("");
+  const [patientLines, setPatientLines] = useState(/** @type {string[]} */ ([]));
   const [sttError, setSttError] = useState("");
   const [listening, setListening] = useState(false);
   const [call, setCall] = useState(/** @type {DailyCall | null} */ (null));
@@ -67,7 +68,6 @@ export default function VideoPane({
   const [copied, setCopied] = useState(false);
   const patient = people.find((p) => !p.local);
   const patientAudio = patient?.tracks.audio.state === "playable" ? patient.tracks.audio.persistentTrack : undefined;
-  const stopRef = useRef(/** @type {{ stop: () => void } | null} */ (null));
   const startedAtRef = useRef(sessionInfo?.startedAt || Date.now());
   const leftRef = useRef(onSimulateDisconnect);
   leftRef.current = onSimulateDisconnect;
@@ -76,48 +76,44 @@ export default function VideoPane({
     startedAtRef.current = sessionInfo?.startedAt || Date.now();
   }, [sessionInfo?.startedAt]);
 
+  // Patient audio only. The host microphone stays on the call and is not transcribed.
   useEffect(() => {
-    let cancelled = false;
-
-    const stop = () => {
-      stopRef.current?.stop();
-      stopRef.current = null;
+    if (!liveMode || !live || session.paused || !patientAudio) {
       setListening(false);
       setPartial("");
-    };
-
-    if (!mic || !live || !liveMode || session.paused) {
-      stop();
       return undefined;
     }
+    let cancelled = false;
+    /** @type {{ stop: () => void } | null} */
+    let handle = null;
 
     (async () => {
       setSttError("");
       try {
         const { wsUrl } = await workspaceApi.getSttToken();
         if (cancelled) return;
-        const handle = await startRealtimeStt({
+        handle = await startRealtimeStt({
           wsUrl,
-          onPartial: (text) => setPartial(text),
+          track: patientAudio,
+          onPartial: (text) => { if (!cancelled) setPartial(text); },
           onCommitted: (text) => {
+            if (cancelled) return;
             setPartial("");
+            setPatientLines((lines) => [...lines, text].slice(-8));
             const t = Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000));
-            onCommittedTranscript?.({ t, speaker: "Clinician", text });
+            onCommittedTranscript?.({ t, speaker: "Patient", text });
           },
-          onError: (err) => setSttError(err.message),
-          onClose: () => {
-            if (!cancelled) setListening(false);
-          },
+          onError: (err) => { if (!cancelled) setSttError(err.message); },
+          onClose: () => { if (!cancelled) setListening(false); },
         });
         if (cancelled) {
           handle.stop();
           return;
         }
-        stopRef.current = handle;
         setListening(true);
       } catch (err) {
         if (!cancelled) {
-          setSttError(isErrorShape(err) && err.message ? err.message : "Could not start speech-to-text");
+          setSttError(isErrorShape(err) && err.message ? err.message : "Could not transcribe the patient");
           setListening(false);
         }
       }
@@ -125,38 +121,9 @@ export default function VideoPane({
 
     return () => {
       cancelled = true;
-      stop();
-    };
-  }, [mic, live, liveMode, session.paused, onCommittedTranscript]);
-
-  // The patient's Daily track, not the laptop mic. The mic button does not start or stop this stream.
-  useEffect(() => {
-    if (!liveMode || !live || session.paused || !patientAudio) return undefined;
-    let cancelled = false;
-    /** @type {{ stop: () => void } | null} */
-    let handle = null;
-
-    (async () => {
-      try {
-        const { wsUrl } = await workspaceApi.getSttToken();
-        if (cancelled) return;
-        handle = await startRealtimeStt({
-          wsUrl,
-          track: patientAudio,
-          onCommitted: (text) => {
-            const t = Math.max(0, Math.floor((Date.now() - startedAtRef.current) / 1000));
-            onCommittedTranscript?.({ t, speaker: "Patient", text });
-          },
-        });
-        if (cancelled) handle.stop();
-      } catch {
-        // The clinician mic stream reports its own failure. This one just stops.
-      }
-    })();
-
-    return () => {
-      cancelled = true;
       handle?.stop();
+      setListening(false);
+      setPartial("");
     };
   }, [liveMode, live, session.paused, patientAudio, onCommittedTranscript]);
 
@@ -273,7 +240,7 @@ export default function VideoPane({
           <span className="rounded-full bg-black/40 px-2.5 py-1 font-mono text-xs backdrop-blur">{formatClock(session.elapsed)}</span>
           <span className="flex items-center gap-1 rounded-full bg-black/40 px-2.5 py-1 text-xs backdrop-blur">
             <Sparkles className="h-3 w-3 text-eucalyptus" />
-            {listening ? "Listening" : "AI idle"}
+            {listening ? "Patient" : "Waiting for patient"}
           </span>
         </div>
 
@@ -291,9 +258,14 @@ export default function VideoPane({
           )}
         </div>
 
-        {(partial || sttError) && (
-          <div className="absolute bottom-28 left-3 right-3 max-w-md rounded-lg bg-black/55 px-3 py-2 text-xs backdrop-blur">
-            {sttError ? <p className="text-red-200">{sttError}</p> : <p className="text-white/85"><span className="text-white/50">Live · </span>{partial}</p>}
+        {(patientLines.length > 0 || partial || sttError) && (
+          <div className="absolute bottom-28 left-3 max-w-md rounded-lg bg-black/55 px-3 py-2 text-xs backdrop-blur">
+            <p className="text-[10px] uppercase tracking-wide text-white/50">Patient transcript · clinician only</p>
+            {patientLines.map((line, index) => (
+              <p key={`${index}-${line.slice(0, 24)}`} className="mt-1 text-white/85">{line}</p>
+            ))}
+            {partial && <p className="mt-1 text-white/60">{partial}</p>}
+            {sttError && <p className="mt-1 text-red-200">{sttError}</p>}
           </div>
         )}
 

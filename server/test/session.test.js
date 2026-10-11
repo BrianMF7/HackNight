@@ -3,7 +3,7 @@ import { after, before, test } from "node:test";
 import { events, syntheticSession, transcript } from "../../src/api/fixtures/syntheticSession.js";
 import { workspaceEndpoints } from "../../src/api/liveWorkspace.js";
 import { createServer } from "../index.js";
-import { load } from "../session.js";
+import { findSession, load } from "../session.js";
 
 const TOKEN = "test-token";
 const ORIGIN = "http://localhost:5173";
@@ -201,6 +201,24 @@ test("an unknown session is 404", async () => {
   const res = await fetch(`${base}/api/sessions/missing/events`, { headers: authHeaders() });
   assert.equal(res.status, 404);
   assert.equal((await res.json()).code, "NOT_FOUND");
+});
+
+test("GET session pdf exports a drafted client answer", async () => {
+  const created = await fetch(`${base}/api/sessions`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ templateId: "adult-intake-v1", live: true }),
+  });
+  const session = await created.json();
+  const record = findSession(session.id);
+  record.answers["AIQ-001"] = { status: "draft", answer: "The client feels overwhelmed." };
+  const res = await fetch(`${base}/api/sessions/${session.id}/pdf`, {
+    headers: { Authorization: `Bearer ${TOKEN}`, Origin: ORIGIN, Accept: "application/pdf" },
+  });
+  assert.equal(res.status, 200);
+  assert.match(res.headers.get("content-type") || "", /application\/pdf/);
+  const bytes = Buffer.from(await res.arrayBuffer());
+  assert.ok(bytes.subarray(0, 5).equals(Buffer.from("%PDF-")));
 });
 
 test("session routes reject a missing bearer", async () => {
