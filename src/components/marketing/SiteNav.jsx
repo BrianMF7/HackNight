@@ -10,7 +10,7 @@ export default function SiteNav() {
   const [open, setOpen] = useState(false);
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-5 sm:px-8">
         <Link to="/" aria-label="MindScribe home"><Logo /></Link>
         <nav aria-label="Main navigation" className="hidden items-center gap-7 lg:flex">{nav.map(([label, href]) => <a key={href} href={href} className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">{label}</a>)}</nav>
         <div className="hidden items-center gap-3 lg:flex"><Button asChild className="rounded-md shadow-none"><Link to="/login">Sign in</Link></Button></div>

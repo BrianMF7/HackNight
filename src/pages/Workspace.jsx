@@ -139,10 +139,13 @@ export default function Workspace() {
 
   return (
     <div className="flex h-screen flex-col bg-background">
-      <div className="flex items-center justify-between border-b border-border bg-white px-4 py-2">
+      <div className="flex h-16 items-center justify-between border-b border-border bg-white px-4">
         <Button variant="ghost" size="sm" onClick={() => navigate("/app")}><ArrowLeft className="mr-1 h-4 w-4" />Dashboard</Button>
         <p className="text-sm font-medium">{info.patientLabel} · Adult Intake</p>
-        <span className="w-24 text-right text-xs text-muted-foreground">{sessionStatus === "In progress" ? "" : "Draft"}</span>
+        <div className="flex items-center justify-end gap-2">
+          {sessionStatus !== "In progress" && <span className="text-xs text-muted-foreground">Draft</span>}
+          <img src="/mindScribeImprove.png" alt="MindScribe" width={64} height={48} />
+        </div>
       </div>
       <SessionTimerBar session={session} plannedMinutes={info.plannedMinutes} />
 

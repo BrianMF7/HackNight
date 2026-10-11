@@ -11,9 +11,10 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
           <Link to="/app"><Logo /></Link>
           <div className="flex items-center gap-2">
+            <img src="/mindScribeImprove.png" alt="" width={40} height={30} />
             <span className="hidden text-xs text-muted-foreground sm:inline">{user?.email}</span>
             <Button variant="ghost" size="icon" aria-label="Sign out" onClick={() => logout()}><LogOut /></Button>
           </div>
