@@ -4,9 +4,9 @@
 // and unmentioned symptoms are left unanswered (absence is not denial).
 export const syntheticSession = {
   id: "demo-session-001",
-  patientLabel: "Patient A. (synthetic)",
-  therapist: { name: "Dr. Rowan Ellis (synthetic)", email: "therapist@example.com" },
-  clinician: "Clinician (synthetic)",
+  patientLabel: "Patient A.",
+  therapist: { name: "Dr. Rowan Ellis", email: "therapist@example.com" },
+  clinician: "Clinician",
   templateId: "adult-intake-v1",
   plannedMinutes: 45,
 };

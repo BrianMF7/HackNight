@@ -29,8 +29,7 @@ function CallVideo({ video, audio, className }) {
   return <video ref={ref} autoPlay playsInline muted={!audio} className={className} />;
 }
 
-// Live mode joins the session's Daily room (the patient opens the same link); demo mode keeps a placeholder.
-// The clinician's mic also streams to ElevenLabs realtime STT in live mode.
+// Live mode joins the session's Daily room. The clinician mic also streams to realtime speech-to-text.
 /**
  * @param {{
  *   session: { connection: "connected" | "patient_left", paused: boolean, elapsed: number },
@@ -56,7 +55,7 @@ export default function VideoPane({
   const [mic, setMic] = useState(true);
   const [cam, setCam] = useState(true);
   const [chat, setChat] = useState(false);
-  const [msgs, setMsgs] = useState(/** @type {ChatLine[]} */ (liveMode ? [] : [{ from: "Patient", text: "Hi, can you hear me okay? (synthetic)" }]));
+  const [msgs, setMsgs] = useState(/** @type {ChatLine[]} */ ([]));
   const [partial, setPartial] = useState("");
   const [sttError, setSttError] = useState("");
   const [listening, setListening] = useState(false);
@@ -228,10 +227,10 @@ export default function VideoPane({
   const selfVideo = cam ? playableVideo(people.find((p) => p.local)) : undefined;
   const knocking = waiting[0];
   const feedNote = !liveMode
-    ? "Demo video placeholder · switch to live mode for realtime STT"
+    ? ""
     : call
       ? patient ? "Patient camera is off" : "Copy the patient link, then admit them when they knock"
-      : callError ? `Mic only · ${callError}` : "Live mic → ElevenLabs speech-to-text";
+      : callError ? `Mic only · ${callError}` : "";
 
   const copyLink = async () => {
     await navigator.clipboard.writeText(roomUrl);
@@ -259,7 +258,7 @@ export default function VideoPane({
             <div className="text-center">
               <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/10"><UserRound className="h-12 w-12 text-white/70" /></div>
               <p className="mt-3 text-sm font-medium">{patientLabel}</p>
-              <p className="text-xs text-white/60">{feedNote}</p>
+              {feedNote && <p className="text-xs text-white/60">{feedNote}</p>}
             </div>
           </div>
         )}
@@ -298,15 +297,13 @@ export default function VideoPane({
           </div>
         )}
 
-        {call && <span className="absolute bottom-3 left-3 rounded-full bg-black/40 px-2.5 py-1 text-[11px] text-white/80 backdrop-blur">Live demo · synthetic role-play only</span>}
-
         <div className="absolute bottom-3 right-3 flex h-24 w-36 items-center justify-center overflow-hidden rounded-xl border border-white/20 bg-[#3a5a52] shadow-lg">
           {selfVideo ? <CallVideo video={selfVideo} className="h-full w-full -scale-x-100 object-cover" />
             : cam ? <div className="text-center"><User className="mx-auto h-7 w-7 text-white/70" /><p className="mt-1 text-[10px] text-white/70">You</p></div>
             : <VideoOff className="h-6 w-6 text-white/50" />}
         </div>
 
-        {chat && <ChatPanel messages={msgs} onSend={sendChat} demo={!call} onClose={() => setChat(false)} />}
+        {chat && <ChatPanel messages={msgs} onSend={sendChat} onClose={() => setChat(false)} />}
       </div>
 
       <div className="flex items-center justify-center gap-2 border-t border-white/10 bg-black/30 px-3 py-3">

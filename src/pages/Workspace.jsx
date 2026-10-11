@@ -42,7 +42,7 @@ export default function Workspace() {
     workspaceApi
       .createSession({
         templateId: "adult-intake-v1",
-        therapistName: "Dr. Rowan Ellis (synthetic)",
+        therapistName: "Dr. Rowan Ellis",
         therapistEmail: "therapist@example.com",
         ...(getMode() === "live" ? { live: true } : {}),
       })

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Play, LogIn, Video, Copy, Check } from "lucide-react";
+import { ArrowRight, Play, LogIn, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -13,18 +13,6 @@ export default function StartSessionCard() {
   const [joinOpen, setJoinOpen] = useState(false);
   const [code, setCode] = useState("");
   const [invite, setInvite] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const link = `${window.location.origin}/join/demo-session-001`;
-
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast({ title: "Could not copy invitation", description: "Select the link and copy it manually." });
-    }
-  };
 
   return (
     <>
@@ -57,12 +45,7 @@ export default function StartSessionCard() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Session ready</DialogTitle>
-            <DialogDescription>Share this invitation with the patient. Demo link only; no real patient video transport is connected yet.</DialogDescription>
           </DialogHeader>
-          <div className="flex gap-2">
-            <Input readOnly value={link} aria-label="Demo session invitation link" />
-            <Button variant="outline" size="icon" onClick={copy} aria-label="Copy link">{copied ? <Check /> : <Copy />}</Button>
-          </div>
           <Button onClick={() => navigate("/app/workspace")}>Open Clinical Workspace</Button>
         </DialogContent>
       </Dialog>

@@ -88,8 +88,8 @@ test('live adapter posts handoff on the session route', () => {
   });
 });
 
-test('review success names the recipient and limits the demo disclaimer to demo mode', async () => {
+test('review success names the recipient and does not call the handoff a demo', async () => {
   const src = await readFile(new URL('../../src/components/workspace/ReviewModal.jsx', import.meta.url), 'utf8');
   assert.match(src, /sent\.to/);
-  assert.match(src, /sent\.demo \? " In demo mode no email or PDF is actually generated\." : ""/);
+  assert.equal(src.includes("demo mode"), false);
 });
