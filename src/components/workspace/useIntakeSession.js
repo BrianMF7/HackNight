@@ -66,6 +66,7 @@ export default function useIntakeSession(session) {
   const playhead = elapsed * PLAYBACK_SPEED;
 
   useEffect(() => {
+    if (getMode() !== "mock") return; // Never play synthetic demo answers in live sessions.
     events.forEach((ev) => {
       if (ev.at <= playhead && !firedRef.current.has(ev.fieldId + ev.at)) {
         firedRef.current.add(ev.fieldId + ev.at);
@@ -177,7 +178,7 @@ export default function useIntakeSession(session) {
   }, [session?.id]);
 
   return {
-    elapsed, playhead, answers, questionState, confirmedIds, outstanding, notifications, snoozed, transcript,
+    sessionId: session?.id, elapsed, playhead, answers, questionState, confirmedIds, outstanding, notifications, snoozed, transcript,
     connection, setConnection, paused, setPaused,
     dismissNotification, snooze, confirm, saveEdit, appendTranscriptLine, requestFinalPass,
   };

@@ -1,3 +1,4 @@
+import { handleDiagnostic } from "./diagnostic.js";
 import { timingSafeEqual } from "node:crypto";
 import http from "node:http";
 import { pathToFileURL } from "node:url";
@@ -148,6 +149,9 @@ export function createServer({
       json(res, focusResponse.status, focusResponse.body);
       return;
     }
+
+    const diagnosticResponse = handleDiagnostic(req.method, url.pathname, body);
+    if (diagnosticResponse) { json(res, diagnosticResponse.status, diagnosticResponse.body); return; }
 
     const handoffResponse = await handleHandoff(req.method, url.pathname, body, Date.now(), { mailer: handoffMailer, sql });
     if (handoffResponse) {
