@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+<title>MindScribe</title>
+<rect width="64" height="64" rx="15" fill="#2E6F95"/>
+<path d="M11 33h11l5-15 11 29 5-14h10" fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

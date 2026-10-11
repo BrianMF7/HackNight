@@ -1,45 +1,35 @@
 import React from "react";
-import { Mic, Video, PhoneOff, Sparkles, UserRound, Check, CircleDashed } from "lucide-react";
+import { ArrowRight, Check, FileText, MessageSquareText, ShieldAlert } from "lucide-react";
 
-// Static illustration of the real-time workspace (video + live question tracking + populated form).
-const rows = [
-  { q: "What brings you in today?", a: "Feeling overwhelmed and anxious.", state: "draft" },
-  { q: "When did these symptoms begin?", a: "Approximately six months.", state: "confirmed" },
-  { q: "Sleep difficulties", a: "Lies awake for hours most nights.", state: "draft" },
-  { q: "Thoughts of self-harm", a: null, state: "open" },
+const excerpts = [
+  { at: "04:12", speaker: "Patient", text: "I have been feeling anxious for the past few months." },
+  { at: "11:38", speaker: "Patient", text: "It became worse after I changed jobs." },
+  { at: "23:05", speaker: "Patient", text: "My parents separated when I was young." },
 ];
 
 export default function WorkspacePreview() {
   return (
-    <div className="overflow-hidden rounded-2xl border border-border bg-white shadow-2xl shadow-primary/10">
-      <div className="flex items-center gap-1.5 border-b border-border bg-secondary/50 px-4 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-border" /><span className="h-2.5 w-2.5 rounded-full bg-border" /><span className="h-2.5 w-2.5 rounded-full bg-border" />
-        <span className="ml-3 text-[11px] text-muted-foreground">Clinical workspace · illustrative preview</span>
+    <div className="overflow-hidden rounded-lg border border-border bg-white shadow-[0_14px_45px_-32px_rgba(28,49,68,0.4)]" aria-label="Illustrative conversation-to-documentation workflow with synthetic examples">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 sm:px-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground"><FileText aria-hidden="true" className="h-4 w-4 text-primary"/> Clinical intake</div>
+        <span className="text-[11px] text-muted-foreground">Illustrative · Synthetic data</span>
       </div>
-      <div className="grid grid-cols-[45fr_55fr]">
-        <div className="relative flex min-h-[300px] flex-col justify-between bg-gradient-to-br from-[#35564e] to-[#1f2d29] p-3 text-white">
-          <div className="flex justify-between text-[10px]">
-            <span className="rounded-full bg-black/30 px-2 py-0.5">Patient A.</span>
-            <span className="flex items-center gap-1 rounded-full bg-black/30 px-2 py-0.5"><Sparkles className="h-2.5 w-2.5 text-eucalyptus" />AI listening</span>
-          </div>
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10"><UserRound className="h-8 w-8 text-white/70" /></div>
-          <div className="flex items-center justify-center gap-1.5">
-            <span className="rounded-full bg-white/15 p-1.5"><Mic className="h-3 w-3" /></span>
-            <span className="rounded-full bg-white/15 p-1.5"><Video className="h-3 w-3" /></span>
-            <span className="rounded-full bg-red-500 p-1.5"><PhoneOff className="h-3 w-3" /></span>
+      <div className="grid md:grid-cols-2">
+        <div className="border-b border-border px-4 py-5 sm:px-5 md:border-b-0 md:border-r">
+          <div className="mb-5 flex items-center justify-between gap-2"><div className="flex items-center gap-2 text-xs font-semibold text-foreground"><MessageSquareText className="h-4 w-4 text-primary" aria-hidden="true" /> Conversation</div><span className="text-xs text-muted-foreground">Chronological</span></div>
+          <div className="space-y-0">
+            {excerpts.map((line, i) => <div key={line.at} className={`relative border-l-2 py-3 pl-4 ${i === 1 ? 'border-primary bg-secondary/40' : 'border-border'}`}><p className="mb-1 text-[11px] font-medium text-muted-foreground">{line.speaker} · {line.at}</p><p className="text-[13px] leading-6 text-foreground">“{line.text}”</p></div>)}
           </div>
         </div>
-        <div className="space-y-2 bg-muted/40 p-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-primary">Adult Intake · 62% documented</p>
-          {rows.map((r) => (
-            <div key={r.q} className={`rounded-md border bg-white p-2 text-[10px] ${r.state === "open" ? "border-dashed border-amber-300" : "border-border"}`}>
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{r.q}</span>
-                {r.state === "confirmed" ? <Check className="h-3 w-3 text-primary" /> : r.state === "draft" ? <Sparkles className="h-3 w-3 text-teal" /> : <CircleDashed className="h-3 w-3 text-amber-500" />}
-              </div>
-              <p className="mt-0.5 text-muted-foreground">{r.a || "Additional information needed"}</p>
-            </div>
-          ))}
+        <div className="px-4 py-5 sm:px-5">
+          <div className="mb-5 flex items-center justify-between gap-2"><div className="flex items-center gap-2 text-xs font-semibold text-foreground"><FileText className="h-4 w-4 text-primary" aria-hidden="true"/> Structured intake</div><span className="text-xs text-muted-foreground">By topic</span></div>
+          <div className="space-y-0 divide-y divide-border">
+            <div className="pb-4"><div className="flex items-center justify-between gap-2"><span className="text-[13px] font-medium">Presenting concerns</span><span className="text-[11px] font-medium text-primary">AI draft</span></div><p className="mt-1 text-xs leading-5 text-muted-foreground">Recent anxiety and job-related stress.</p><span className="mt-2 inline-flex items-center gap-1 text-[11px] text-primary"><ArrowRight className="h-3 w-3" aria-hidden="true"/> Evidence at 04:12 and 11:38</span></div>
+            <div className="py-4"><div className="flex items-center justify-between gap-2"><span className="text-[13px] font-medium">Personal history</span><span className="text-[11px] font-medium text-primary">AI draft</span></div><p className="mt-1 text-xs leading-5 text-muted-foreground">Family separation in childhood.</p><span className="mt-2 inline-flex items-center gap-1 text-[11px] text-primary"><ArrowRight className="h-3 w-3" aria-hidden="true"/> Evidence at 23:05</span></div>
+            <div className="py-4"><div className="flex items-center justify-between gap-2"><span className="text-[13px] font-medium">Medical history</span><span className="inline-flex items-center gap-1 text-[11px] text-muted-foreground">Unanswered</span></div><p className="mt-1 text-xs leading-5 text-muted-foreground">No relevant information documented.</p></div>
+            <div className="pt-4"><div className="flex items-center justify-between gap-2"><span className="text-[13px] font-medium">Safety review</span><span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#926018]"><ShieldAlert className="h-3 w-3" aria-hidden="true"/> Review required</span></div><p className="mt-1 text-xs leading-5 text-muted-foreground">Requires clinician assessment.</p></div>
+          </div>
+          <div className="mt-5 flex items-center gap-2 border-t border-border pt-4 text-[11px] font-medium text-primary"><Check className="h-3.5 w-3.5" aria-hidden="true" /> Clinician confirmation required for drafts</div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import React from "react";
-import { NavLink, Outlet, Link } from "react-router-dom";
-import { LayoutDashboard, LogOut } from "lucide-react";
+import { Outlet, Link } from "react-router-dom";
+import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/AuthContext";
@@ -17,11 +17,6 @@ export default function AppLayout() {
       <header className="border-b border-border bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/"><Logo /></Link>
-          <nav className="flex items-center gap-1">
-            <NavLink to="/app" end className={({ isActive }) => `flex items-center gap-2 rounded-md px-3 py-1.5 text-sm ${isActive ? "bg-secondary font-medium text-primary" : "text-muted-foreground hover:text-foreground"}`}>
-              <LayoutDashboard className="h-4 w-4" />Dashboard
-            </NavLink>
-          </nav>
           <div className="flex items-center gap-2">
             <Badge variant={mode === "live" ? "default" : "secondary"}>{mode === "live" ? "Live backend" : "Demo mode"}</Badge>
             <ConnectionSettings />
