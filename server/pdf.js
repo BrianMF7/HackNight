@@ -121,6 +121,13 @@ export function exportSections(record, template) {
   return collectSections(record, template, true);
 }
 
+/** Patient lines only. The host is not part of the collected transcript. */
+export function patientTranscriptLines(record) {
+  return (record?.transcript ?? [])
+    .filter((line) => line?.speaker === "Patient" && String(line.text ?? "").trim())
+    .map((line) => ({ t: Number(line.t) || 0, text: String(line.text).trim() }));
+}
+
 /** @returns {Promise<Buffer>} The completed PDF bytes, never written to disk. */
 export async function renderIntakePdf(record, { includeDrafts = false } = {}) {
   if (!record || typeof record !== "object") throw new TypeError("Session record is required");
@@ -184,6 +191,17 @@ export async function renderIntakePdf(record, { includeDrafts = false } = {}) {
       draw(item.answer, { size: 10, gapAfter: 1 });
       if (item.quote) draw(item.quote, { oblique: true, size: 9, color: MUTED, gapAfter: 1 });
       draw(item.draft ? "Draft" : item.confirmation, { size: 8, color: MUTED, gapAfter: 8 });
+    }
+  }
+
+  const spoken = includeDrafts ? patientTranscriptLines(record) : [];
+  if (spoken.length) {
+    if (y < MARGIN + 48) newPage();
+    draw("PATIENT TRANSCRIPT", { strong: true, size: 9, gapAfter: 2, color: BAR });
+    rule();
+    for (const line of spoken) {
+      if (y < MARGIN + 28) newPage();
+      draw(line.text, { size: 10, gapAfter: 6 });
     }
   }
 

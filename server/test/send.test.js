@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { confirmedSections, exportSections, renderIntakePdf } from "../pdf.js";
+import { confirmedSections, exportSections, patientTranscriptLines, renderIntakePdf } from "../pdf.js";
 import { createFakeMailer, createSmtpMailer, sendPacketOnce } from "../send.js";
 import { getTemplate } from "../template.js";
 
@@ -40,6 +40,12 @@ test("export includes a drafted client answer and the emailed PDF does not", () 
   record.events = [];
   const quoted = exportSections(record, template).flatMap((section) => section.items).find((item) => item.id === "AIQ-001");
   assert.equal(quoted.quote, "Work has been stressful.");
+  record.transcript.push({ t: 1, speaker: "Clinician", text: "How are you?" });
+  record.transcript.push({ t: 8, speaker: "Patient", text: "I have felt low most days." });
+  assert.deepEqual(patientTranscriptLines(record), [
+    { t: 6, text: "Work has been stressful." },
+    { t: 8, text: "I have felt low most days." },
+  ]);
 });
 
 test("PDF source contains confirmed answers and grounded exact evidence only", () => {
