@@ -657,3 +657,98 @@ Transcript source for 9a–9b is only Task 3’s synthetic session lines. No Scr
 - [ ] Live path: mic commit → one `POST .../transcript-lines` → grounded drafts on the form. Opening review runs one full-transcript pass that fills or updates unconfirmed answers. Live handoff works end-to-end. Task 10 is not required.
 - [ ] Tiger row when `DATABASE_URL` is set (ping alone is not enough)
 - [ ] Human approves before a live microphone, real Scribe session, or a real inbox
+
+---
+
+## Task 13: A Daily room for a live session
+
+**Description:** `POST /api/sessions/:sessionId/call` creates one private Daily room per live session (`enable_chat`, `enable_knocking`, `enable_prejoin_ui`, `exp` two hours ahead) and an owner meeting token tied to that `room_name`, through Daily's REST API with `fetch`. It returns `{ roomUrl, token }`. The room URL is the patient link: the patient opens it without a token and knocks. Repeat or concurrent requests share one room. `DAILY_API_KEY` stays on the server. Plan: `tasks/video-plan.md`.
+
+**Acceptance criteria:**
+- [x] The room request is `privacy: "private"` with chat, knocking, and prejoin on and an `exp`; the token request is `is_owner: true` for that room with the same `exp`
+- [x] A repeat request and two concurrent requests create one room
+- [x] Missing `DAILY_API_KEY` is 503 `NO_VIDEO_KEY`, a synthetic session is 422 `NOT_LIVE`, unknown ids are 404, and none of them call Daily
+- [x] A Daily failure is 502 `VIDEO_FAILED`, and a retry can still create the room
+- [x] The API key never appears in a response
+
+**Verification:**
+- [x] Tests pass: `node --test server/test/video.test.js`
+- [x] Build succeeds: `node --check server/video.js && node --check server/index.js`
+- [x] Manual check: with a real `DAILY_API_KEY`, the returned room URL opens Daily's prejoin screen (Daily reports the room private with chat, knocking, and prejoin on and a 2h `exp`; the owner token validates for that room; the link shows "Locked by host", then "Request to join")
+
+**Dependencies:** Task 11 (live sessions)
+
+**Files likely touched:**
+- `server/video.js`, `server/index.js`
+- `server/test/video.test.js`
+- `.env.example`
+
+**Estimated scope:** Small: 3–4 files
+
+---
+
+## Task 14: The call in VideoPane
+
+**Description:** In live mode the workspace calls `startCall` and joins with `Daily.createCallObject()`. The patient's video and audio play in the patient-feed slot and the local video in the self view. The mic and camera buttons drive `setLocalAudio` and `setLocalVideo`; the mic button still stops the clinician's Scribe stream. A knocking patient shows an "Admit <name>" button. `ChatPanel` sends and lists Daily `app-message` chat (`{ event: "chat-msg", message, name, room: "main-room" }`, the shape Daily's hosted page reads and writes). `participant-left` opens the keep/discard modal, End Call leaves, and a "Copy patient link" button in the pane copies the room URL. If `startCall` fails (for example `NO_VIDEO_KEY`), mic-only live mode stays exactly as it is. Demo mode keeps the placeholder.
+
+**Acceptance criteria:**
+- [ ] A desktop and a phone hold a call; the patient knocks and is admitted (two tabs on one laptop passed: knock, admit, the patient's 960×540 video and audio play in the pane; phone still to do)
+- [x] Chat flows both ways between our panel and the hosted page
+- [x] The patient leaving opens the keep/discard modal (a real leave fires the same handler as "Simulate patient leaving"; End Call does not fire it)
+- [ ] Without `DAILY_API_KEY`, mic-only live mode still transcribes; demo mode is unchanged (passed: "Mic only · Daily is not configured…" with no call UI, and demo mode unchanged; not re-run with a live mic, though the STT effect is untouched)
+
+**Verification:**
+- [x] Tests pass: `node --test server/test/*.test.js src/lib/*.test.js`
+- [x] Build succeeds: `npm run typecheck && npx eslint . --quiet && npm run build`
+- [ ] Manual check: two devices, admit, chat both ways, patient leaves (two-tab rehearsal passed through a throwaway page mounting the real `VideoPane`; the login-gated `/app/workspace` and a phone are still to do)
+
+**Dependencies:** Task 13
+
+**Files likely touched:**
+- `package.json` (`@daily-co/daily-js`)
+- `src/api/liveWorkspace.js`, `src/api/index.js`, `src/api/mockWorkspace.js`
+- `src/components/workspace/VideoPane.jsx`, `src/components/workspace/ChatPanel.jsx`, `src/components/workspace/dailyChat.js`
+- `server/test/video.test.js`, `src/lib/dailyChat.test.js`
+
+**Estimated scope:** Medium: 5+ files
+
+---
+
+## Checkpoint: Real call
+
+- [ ] Two devices connect on the venue Wi-Fi and again on a phone hotspot
+- [ ] Demo mode and mic-only live mode still work
+
+---
+
+## Task 15: The patient's voice reaches Scribe
+
+**Description:** `startRealtimeStt` takes an optional `track`. With a track it records `new MediaStream([track])` instead of calling `getUserMedia`, and `stop()` never stops that track, because it belongs to Daily. `VideoPane` starts a second Scribe stream on the patient's audio track, with a fresh single-use token, and posts its committed lines as `speaker: "Patient"`. That stream ignores the clinician's mic toggle and stops when the track stops, the patient leaves, the session pauses, or the pane unmounts. `transcript-lines` accepts only `Clinician` or `Patient` as the speaker.
+
+**Acceptance criteria:**
+- [x] `stop()` does not stop a passed-in track, and still stops a microphone it opened
+- [x] An unknown speaker is 400 and adds nothing
+- [ ] Patient answers spoken on the phone become "Patient" lines and fill fields
+
+**Verification:**
+- [x] Tests pass: `node --test server/test/session.test.js src/lib/realtimeStt.test.js`
+- [x] Build succeeds: `npm run typecheck && npx eslint . --quiet && npm run build`
+- [ ] Manual check: the clinician asks on the laptop, the patient answers on the phone, and fields fill with patient quotes
+
+**Dependencies:** Task 14
+
+**Files likely touched:**
+- `src/lib/realtimeStt.js`, `src/lib/realtimeStt.test.js`
+- `src/components/workspace/VideoPane.jsx`
+- `server/session.js`, `server/test/session.test.js`
+
+**Estimated scope:** Medium: 3–5 files
+
+---
+
+## Checkpoint: Live call demo
+
+- [ ] A spoken synthetic script (clinician on the laptop, patient on the phone) fills the right fields with patient quotes
+- [ ] An unanswered safety question still rises to the top
+- [ ] `node --test server/test/*.test.js src/lib/*.test.js` passes
+- [ ] Human approves before a live call with `ALLOW_PHI=1`

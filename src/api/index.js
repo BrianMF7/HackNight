@@ -31,6 +31,7 @@ const WORKSPACE_METHODS = /** @type {const} */ ([
   "retainDraft",
   "discardDraft",
   "requestHandoff",
+  "startCall",
   "playQuestion",
 ]);
 
@@ -74,5 +75,6 @@ export const workspaceApi = {
   retainDraft: (payload) => workspace().retainDraft(payload),
   discardDraft: (payload) => workspace().discardDraft(payload),
   requestHandoff: (payload) => workspace().requestHandoff(payload),
+  startCall: (payload) => workspace().startCall(payload),
   playQuestion: (payload) => workspace().playQuestion(payload),
 };

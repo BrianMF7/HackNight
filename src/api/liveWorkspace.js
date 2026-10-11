@@ -34,6 +34,7 @@ export const workspaceEndpoints = {
   retainDraft: { method: "POST", path: "/api/sessions/:sessionId/retain" },
   discardDraft: { method: "POST", path: "/api/sessions/:sessionId/discard" },
   requestHandoff: { method: "POST", path: "/api/sessions/:sessionId/handoff" },
+  startCall: { method: "POST", path: "/api/sessions/:sessionId/call" },
   playQuestion: null,
 };
 
@@ -87,5 +88,6 @@ export const liveWorkspace = {
   retainDraft: (/** @type {SessionRef} */ { sessionId }) => request("retainDraft", { params: { sessionId } }),
   discardDraft: (/** @type {SessionRef} */ { sessionId }) => request("discardDraft", { params: { sessionId } }),
   requestHandoff: (/** @type {HandoffInput} */ payload) => request("requestHandoff", { params: { sessionId: payload.sessionId }, body: payload }),
+  startCall: (/** @type {SessionRef} */ { sessionId }) => request("startCall", { params: { sessionId } }),
   playQuestion: (/** @type {PlayInput} */ { sessionId, fieldId }) => request("playQuestion", { params: { sessionId }, body: { fieldId } }),
 };

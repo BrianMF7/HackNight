@@ -45,11 +45,12 @@ function pcm16ToBase64(pcm) {
 }
 
 /**
- * @param {{ wsUrl: string, onPartial?: (text: string) => void, onCommitted?: (text: string) => void, onError?: (err: Error) => void, onClose?: () => void }} opts
+ * @param {{ wsUrl: string, track?: MediaStreamTrack, onPartial?: (text: string) => void, onCommitted?: (text: string) => void, onError?: (err: Error) => void, onClose?: () => void }} opts
  * @returns {Promise<{ stop: () => void }>}
  */
 export async function startRealtimeStt({
   wsUrl,
+  track,
   onPartial,
   onCommitted,
   onError,
@@ -57,9 +58,13 @@ export async function startRealtimeStt({
 }) {
   if (!wsUrl) throw new Error("Missing speech-to-text WebSocket URL");
 
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  });
+  // A passed-in track belongs to the call. Stopping it would mute that person.
+  const borrowed = Boolean(track);
+  const stream = track
+    ? new MediaStream([track])
+    : await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
   const ctx = new AudioContext();
   const source = ctx.createMediaStreamSource(stream);
   const processor = ctx.createScriptProcessor(PROCESSOR_BUFFER, 1, 1);
@@ -75,7 +80,7 @@ export async function startRealtimeStt({
     try { processor.disconnect(); } catch { /* already */ }
     try { source.disconnect(); } catch { /* already */ }
     try { silent.disconnect(); } catch { /* already */ }
-    stream.getTracks().forEach((t) => t.stop());
+    if (!borrowed) stream.getTracks().forEach((t) => t.stop());
     void ctx.close();
     if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) ws.close();
   };
