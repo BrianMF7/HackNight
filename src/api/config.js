@@ -49,11 +49,29 @@ const prodBuild = hasViteEnv ? Boolean(import.meta.env.PROD) : false;
 export const localDemoUrl = backendUrlFromEnv(envUrl, prodBuild);
 export const localDemoToken = backendTokenFromEnv(envToken, prodBuild);
 
-export const getMode = () => localStorage.getItem(MODE_KEY) || "mock";
+export function defaultApiMode(stored, prod) {
+  if (stored === "live" || stored === "mock") return stored;
+  return prod ? "live" : "mock";
+}
+
+export function resolveBackendUrl(stored, envUrl, prod) {
+  const saved = String(stored || "").trim().replace(/\/+$/, "");
+  if (saved && !(prod && isLoopbackUrl(saved))) return saved;
+  return backendUrlFromEnv(envUrl, prod);
+}
+
+export const getMode = () => defaultApiMode(
+  typeof localStorage !== "undefined" ? localStorage.getItem(MODE_KEY) : null,
+  prodBuild,
+);
 /** @param {string} mode */
 export const setMode = (mode) => localStorage.setItem(MODE_KEY, mode);
 
-export const getBackendUrl = () => localStorage.getItem(URL_KEY) || localDemoUrl;
+export const getBackendUrl = () => resolveBackendUrl(
+  typeof localStorage !== "undefined" ? localStorage.getItem(URL_KEY) : null,
+  envUrl,
+  prodBuild,
+);
 /** @param {string} url */
 export const setBackendUrl = (url) => localStorage.setItem(URL_KEY, String(url || "").trim().replace(/\/+$/, ""));
 

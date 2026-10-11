@@ -28,7 +28,10 @@ export default function Login() {
       await base44.auth.loginViaEmailPassword(email, password);
       window.location.href = returnTo;
     } catch (err) {
-      setError(isErrorShape(err) && err.message ? err.message : "Invalid email or password");
+      const message = isErrorShape(err) && err.message ? err.message : "Invalid email or password";
+      setError(message === "Domain is not valid"
+        ? "Sign-in rejected this site address. In Base44, allow this Vercel domain, then try again."
+        : message);
     } finally {
       setLoading(false);
     }

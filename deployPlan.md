@@ -61,7 +61,9 @@ There is no frontend URL yet. After the page is deployed, copy that origin, incl
 
 Redeploy the Render service so the new origin is loaded. The server allows only origins in that list. A preview URL (`*.vercel.app` on a branch deploy) is a different origin. Use the production URL for the demo.
 
-Open the Vercel site, switch to live mode, and confirm the connection dialog shows the Render URL. Save and test. Expect the ping to succeed.
+Open the Vercel site. A production build defaults to live mode and `https://hacknight-5os5.onrender.com`. Save and test. Expect the ping to succeed.
+
+Sign-in calls `https://base44.app`, not the Vercel server. Base44 rejects the page with `Domain is not valid` until that Vercel hostname is allowed on the app. In the Base44 builder, add the production hostname (the `*.vercel.app` name, no path) to the app's domains, then redeploy Vercel. Do not set `VITE_BASE44_APP_BASE_URL` to `https://app.base44.com`. That is the builder, and it rejects the deployed site.
 
 ## 4. Demo check
 
