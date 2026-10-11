@@ -16,7 +16,7 @@ export default function AppLayout() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border bg-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <Link to="/"><Logo /></Link>
+          <Link to="/app"><Logo /></Link>
           <div className="flex items-center gap-2">
             <Badge variant={mode === "live" ? "default" : "secondary"}>{mode === "live" ? "Live backend" : "Demo mode"}</Badge>
             <ConnectionSettings />
