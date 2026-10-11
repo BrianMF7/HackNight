@@ -18,13 +18,14 @@ test("the start dialog and workspace do not call the session a demo", async () =
   assert.equal(start.includes("Demo link"), false);
   assert.equal(start.includes("Open Clinical Workspace"), true);
   assert.equal(video.includes("(synthetic)"), false);
+  assert.equal(video.includes("Simulate patient leaving"), false);
   assert.equal(video.includes("Demo video"), false);
   assert.equal(video.includes("Live demo"), false);
   assert.equal(video.includes("ElevenLabs"), false);
   assert.equal(chat.includes("(demo)"), false);
   assert.equal(review.includes("demo mode"), false);
   assert.equal(review.includes("(demo)"), false);
-  assert.equal(workspace.includes("(synthetic)"), false);
+  assert.match(workspace, /replaceAll\(" \(synthetic\)", ""\)/);
   assert.equal(fixture.includes("(synthetic)"), false);
   assert.equal(form.includes("demo structure"), false);
   assert.equal(serverForm.includes("demo structure"), false);

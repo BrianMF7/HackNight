@@ -311,7 +311,6 @@ export default function VideoPane({
         <Button size="icon" variant="secondary" onClick={() => setCam((c) => !c)} aria-label="Toggle camera" className={cam ? "" : "bg-red-100 text-red-700"}>{cam ? <Video /> : <VideoOff />}</Button>
         <Button size="icon" variant="secondary" onClick={() => setChat((c) => !c)} aria-label="Toggle chat"><MessageSquare /></Button>
         <Button variant="destructive" onClick={endCall} className="gap-2"><PhoneOff />End Call</Button>
-        <Button size="sm" variant="ghost" className="ml-2 text-[11px] text-white/60 hover:bg-white/10 hover:text-white" onClick={onSimulateDisconnect}>Simulate patient leaving</Button>
       </div>
     </div>
   );

@@ -46,7 +46,11 @@ export default function Workspace() {
         therapistEmail: "therapist@example.com",
         ...(getMode() === "live" ? { live: true } : {}),
       })
-      .then(setInfo)
+      .then((session) => setInfo({
+        ...session,
+        patientLabel: session.patientLabel.replaceAll(" (synthetic)", ""),
+        therapist: { ...session.therapist, name: session.therapist.name.replaceAll(" (synthetic)", "") },
+      }))
       .catch((/** @type {unknown} */ reason) => {
         setError(isErrorShape(reason) ? reason : { message: "Could not start the session." });
       });
