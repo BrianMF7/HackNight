@@ -4,9 +4,9 @@ More human care. Less paperwork.
 
 MindScribe is an AI-assisted mental health intake workspace. It turns a live conversation into a structured questionnaire the clinician still has to review. Speech becomes text, relevant answers are proposed from that text, and nothing is sent until a person confirms it.
 
-**Try it:** [www.mindscribe.health](https://www.mindscribe.health)
+**Try it out!** [www.mindscribe.health](https://www.mindscribe.health)
 
-Built for Hack Knight Fall 2026 by Brian Martinez Flores, Joshua Peguero, Lauren Rodriguez, and Tomas Santos Yciano.
+Built by Brian Martinez Flores, Joshua Peguero, Lauren Rodriguez, and Tomas Santos Yciano during the Fall 2026 HackKnight Hackathon @ Queens College (Queens, NY).
 
 ## The problem
 
@@ -78,10 +78,10 @@ The handoff tests check that a forged clock or forged confirmation cannot send, 
 
 ## Team
 
-- Brian Martinez Flores, B.S. Computer Science
-- Joshua Peguero, B.S. Computer Science
-- Lauren Rodriguez, M.S. AI & Data Science
-- Tomas Santos Yciano, M.S. AI & Data Science
+- [Brian Martinez Flores](https://github.com/BrianMF7)
+- [Joshua Peguero](https://github.com/DarthCoder501)
+- [Lauren Rodriguez](https://github.com/1aur)
+- [Tomas Santos Yciano](https://github.com/tomassantos484)
 
 ## What's next
 
