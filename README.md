@@ -1,6 +1,8 @@
 # MindScribe
+## More human care. Less paperwork.
 
-More human care. Less paperwork.
+<img width="1403" height="851" alt="Screenshot 2026-10-11 at 7 31 57 PM" src="https://github.com/user-attachments/assets/c246c08d-f29a-4bfe-827b-20b2286a1eee" />
+
 
 MindScribe is an AI-assisted mental health intake workspace. It turns a live conversation into a structured questionnaire the clinician still has to review. Speech becomes text, relevant answers are proposed from that text, and nothing is sent until a person confirms it.
 
@@ -10,7 +12,7 @@ Built by Brian Martinez Flores, Joshua Peguero, Lauren Rodriguez, and Tomas Sant
 
 ## The problem
 
-An intake asks a clinician to listen, take notes, and complete a structured form at the same time. Details get lost when attention splits between the person in the room and the paperwork that has to follow them out of it.
+An intake asks a clinician to listen, take notes, and complete a structured form simultaneously. Details get lost when attention splits between the person in the room and the paperwork that has to follow them out of it.
 
 ## What it does
 
@@ -19,7 +21,7 @@ Transcribe, structure, confirm, hand off.
 1. **Transcribe.** ElevenLabs Scribe turns speech into reviewable lines. Daily hosts the video room. The patient opens a link, knocks, and the clinician admits them.
 2. **Structure.** Google Gemini proposes answers only where a quote from the transcript supports them. Silence is not stored as "no." Invented quotes are dropped.
 3. **Confirm.** The clinician edits or confirms each field. A draft is not a final answer. Safety questions cannot be waived.
-4. **Hand off.** The server, not the browser, checks a 45-minute minimum, required confirmations, unresolved safety items, and a real recipient. A refused send writes nothing. An allowed send builds a PDF with pdf-lib, emails it once with Nodemailer, and can store that packet in Tiger Data.
+4. **Hand off.** The server, not the browser, checks a 45-minute minimum, required confirmations, unresolved safety items, and a real recipient. A refused send writes nothing. An allowed send builds a PDF with pdf-lib, emails it once with Nodemailer, and stores the packet in Tiger Data.
 
 Diagnostic suggestions, when shown, are hypotheses with evidence and gaps. They are not a final diagnosis, and no diagnosis code is written onto the form. MindScribe does not contact emergency services.
 
@@ -27,7 +29,7 @@ Diagnostic suggestions, when shown, are hypotheses with evidence and gaps. They 
 
 This is an evaluation demo. It is not a HIPAA-compliant clinical system, and it is not authorized for real patient records. A clinic would still need a business associate agreement, access control, audit logs, and a breach process this build does not have.
 
-A non-synthetic transcript is refused before it reaches Gemini unless the server is explicitly switched on for that processing. API keys for ElevenLabs, Daily, and Gemini stay on the server. The browser only receives short-lived tokens.
+A non-synthetic transcript is rejected before it reaches Gemini unless the server is explicitly enabled for that processing. API keys for ElevenLabs, Daily, and Gemini stay on the server. The browser only receives short-lived tokens.
 
 ## Stack
 
@@ -63,7 +65,7 @@ Open the URL `base44 dev` prints, usually `http://localhost:5173`. Fill `.env` f
 
 `base44 link` writes `base44/.app.jsonc`, which is gitignored, so every fresh clone needs it. Do not run `npm run dev` beside `base44 dev`. That starts a second Vite with no Base44 proxy. `base44 dev --remote` edits the frontend against the hosted Base44 app and writes production data.
 
-The clinical server reads `process.env`. `npm run server` loads `.env` for local work. On Render the start command is `node server/index.js`, and the host injects the variables.
+The clinical server reads `process.env`. `npm run server` loads `.env` for local work. On Render, the start command is `node server/index.js`, and the host injects the variables.
 
 ## Tests
 
@@ -74,7 +76,7 @@ npm run lint
 npm run build
 ```
 
-The handoff tests check that a forged clock or forged confirmation cannot send, and that a second send does not email twice.
+The handoff tests check that a forged clock or forged confirmation cannot be sent, and that a second send does not result in a duplicate email.
 
 ## Team
 
